@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { ACISCard } from '@/components/shared/ACISCard';
 
@@ -8,6 +9,11 @@ const KPI_CARDS = [
   { icon: '📊', title: '이번 달 매출', value: '-', desc: '월 누계',         color: 'text-[#c8962e]' },
   { icon: '⚠️', title: '재고 경보',   value: '-', desc: '안전재고 미달',   color: 'text-red-400' },
   { icon: '💰', title: '미수금 현황',  value: '-', desc: '거래처별 총액',   color: 'text-orange-400' },
+];
+
+const QUICK_LINKS = [
+  { href: '/admin/orders',    label: '📋 주문 관리',    desc: '승인·거절·납기조정·상태 진행' },
+  { href: '/admin/customers', label: '🏢 거래처 관리',  desc: '등록·D2C 이관 관리·신용 한도' },
 ];
 
 export default function AdminDashboardPage() {
@@ -34,6 +40,22 @@ export default function AdminDashboardPage() {
         ))}
         <ACISCard />
       </div>
+
+      <section className="mt-8">
+        <div className="text-xs text-gray-400 mb-2">바로가기</div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          {QUICK_LINKS.map((l) => (
+            <Link key={l.href} href={l.href}>
+              <Card className="bg-[#171b26] border-[#1f2433] text-white hover:border-[#1a3d6b] transition cursor-pointer">
+                <CardContent className="py-4">
+                  <div className="text-base font-semibold text-gray-200">{l.label}</div>
+                  <div className="text-xs text-gray-500 mt-1">{l.desc}</div>
+                </CardContent>
+              </Card>
+            </Link>
+          ))}
+        </div>
+      </section>
 
       <footer className="mt-8 text-xs text-gray-500">
         Phase 2 진행 중 — KPI 실데이터는 주문/배송 시스템 연결 후 표시됩니다.

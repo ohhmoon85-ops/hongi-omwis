@@ -25,9 +25,10 @@ export const DEV_PRODUCTS: Product[] = [
   },
 ];
 
+// 거래처 화면에서 로그인할 때 사용할 기본 거래처 (dev-customers 의 시드 첫번째와 일치)
 export const DEV_CUSTOMER: Customer = {
   id: 'dev-cust-1',
-  company_name: '(개발) 삼성회로기판',
+  company_name: '(주)삼성회로기판',
   contact_name: '김민수',
   phone: '010-1111-2222',
   email: 'kim@samscb.kr',
@@ -43,6 +44,3 @@ export const DEV_CUSTOMER: Customer = {
   created_at: '2026-01-15T00:00:00Z',
   updated_at: '2026-01-15T00:00:00Z',
 };
-
-// 개발 모드 메모리 주문 저장소 (페이지 새로고침 시 초기화)
-// localStorage 사용을 클라이언트 컴포넌트에서 직접 처리
