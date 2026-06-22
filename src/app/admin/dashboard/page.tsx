@@ -1,12 +1,13 @@
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
+import { ACISCard } from '@/components/shared/ACISCard';
 
+// KPI 5종 + ACIS = 총 6 카드
 const KPI_CARDS = [
-  { icon: '📦', title: '오늘의 주문', value: '-', desc: '실시간', color: 'text-blue-400' },
-  { icon: '🚛', title: '배송 현황',   value: '-', desc: '진행/완료', color: 'text-green-400' },
-  { icon: '📊', title: '이번 달 매출', value: '-', desc: '월 누계', color: 'text-[#c8962e]' },
-  { icon: '⚠️', title: '재고 경보',   value: '-', desc: '안전재고 미달', color: 'text-red-400' },
-  { icon: '💰', title: '미수금 현황',  value: '-', desc: '거래처별 총액', color: 'text-orange-400' },
-  { icon: '🤖', title: 'ACIS 신호',   value: '-', desc: '오늘의 구매 신호', color: 'text-purple-400' },
+  { icon: '📦', title: '오늘의 주문', value: '-', desc: '실시간',         color: 'text-blue-400' },
+  { icon: '🚛', title: '배송 현황',   value: '-', desc: '진행/완료',       color: 'text-green-400' },
+  { icon: '📊', title: '이번 달 매출', value: '-', desc: '월 누계',         color: 'text-[#c8962e]' },
+  { icon: '⚠️', title: '재고 경보',   value: '-', desc: '안전재고 미달',   color: 'text-red-400' },
+  { icon: '💰', title: '미수금 현황',  value: '-', desc: '거래처별 총액',   color: 'text-orange-400' },
 ];
 
 export default function AdminDashboardPage() {
@@ -31,10 +32,11 @@ export default function AdminDashboardPage() {
             </CardContent>
           </Card>
         ))}
+        <ACISCard />
       </div>
 
       <footer className="mt-8 text-xs text-gray-500">
-        Phase 1 기반 구축 완료 — Phase 2 부터 KPI 실데이터 연동
+        Phase 2 진행 중 — KPI 실데이터는 주문/배송 시스템 연결 후 표시됩니다.
       </footer>
     </div>
   );

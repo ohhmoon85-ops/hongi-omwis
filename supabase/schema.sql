@@ -269,11 +269,37 @@ CREATE POLICY "cust_read_own_prices" ON customer_prices FOR SELECT
   USING (current_role_v() = 'customer' AND customer_id = current_customer_id());
 
 -- ============================================================================
--- 시드 데이터 (개발 시작용 샘플 품목 3종)
+-- 시드 데이터 (개발 시작용)
 -- ============================================================================
+
+-- 품목 마스터 (PCB용 알루미늄 코일 3종)
 INSERT INTO products (name, type, thickness, width, base_price)
 VALUES
   ('생 알루미늄 0.5mm × 1000mm', 'raw',   0.5, 1000, 4500),
   ('지용성 코팅 0.3mm × 800mm',  'oil',   0.3,  800, 5200),
   ('수용성 코팅 0.3mm × 800mm',  'water', 0.3,  800, 5400)
+ON CONFLICT DO NOTHING;
+
+-- 거래처 샘플 3개 (그 중 2개는 대리점에서 이관된 D2C 전환 거래처)
+INSERT INTO customers (company_name, contact_name, phone, email, address,
+                       delivery_address, price_tier, credit_limit,
+                       former_dealer, transferred_at, memo)
+VALUES
+  ('(주)삼성회로기판', '김민수', '010-1111-2222', 'kim@samscb.kr',
+   '경기 수원시 영통구 광교로 100', '경기 수원시 영통구 광교로 100',
+   'gold', 50000000,
+   '서울대리점', NOW(),
+   '대리점 이관 거래처 — 직거래 1호'),
+
+  ('(주)LG PCB',     '박지영', '010-3333-4444', 'park@lgpcb.kr',
+   '경북 구미시 공단동 200', '경북 구미시 공단동 200',
+   'gold', 80000000,
+   '대구대리점', NOW(),
+   '대리점 이관 거래처 — 신용 한도 8천만'),
+
+  ('소형부품제작소',  '이상호', '010-5555-6666', 'lee@spm.kr',
+   '인천 남동구 산단로 50', '인천 남동구 산단로 50',
+   'standard', 10000000,
+   NULL, NULL,
+   '신규 직거래 거래처')
 ON CONFLICT DO NOTHING;
