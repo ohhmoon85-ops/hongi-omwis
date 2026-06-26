@@ -5,6 +5,7 @@
 import { sendKakaoAlimtalk } from './kakao';
 import { sendEmail } from './email';
 import { KAKAO_TEMPLATES, renderTemplate, missingVariables } from './kakao-templates';
+import { createAdminClient } from '@/lib/supabase/server';
 
 export type NotificationEvent =
   | 'order_created'      // 거래처 주문 접수 → 관리자
@@ -89,12 +90,61 @@ const EVENT_CONFIG: Record<NotificationEvent, EventConfig> = {
   },
 };
 
+// 발송 결과를 notifications 테이블에 audit log 로 저장 (서비스 키)
+// 호출 컨텍스트가 서버여야만 동작 — 클라이언트에서 호출되면 fail silently
+async function logNotification(
+  event: NotificationEvent,
+  channel: 'kakao' | 'email',
+  recipientType: 'chairman' | 'admin' | 'customer' | null,
+  to: string,
+  message: string,
+  status: 'sent' | 'failed',
+  mock: boolean,
+) {
+  try {
+    const admin = createAdminClient();
+    await admin.from('notifications').insert({
+      type: event,
+      recipient_type: recipientType,
+      recipient_id: null,
+      channel,
+      message: `[${to}] ${mock ? '(MOCK) ' : ''}${message.slice(0, 500)}`,
+      status,
+      sent_at: status === 'sent' ? new Date().toISOString() : null,
+    });
+  } catch (err) {
+    // 클라이언트 컨텍스트(서비스 키 없음) 거나 RLS 차단 시 silent — 발송 자체는 영향 없음
+    console.warn('[NOTIFY audit] log skipped:', err instanceof Error ? err.message : err);
+  }
+}
+
+// 이벤트 → 기본 수신자 유형 추론 (audit log 분류용)
+function recipientTypeFor(event: NotificationEvent): 'chairman' | 'admin' | 'customer' | null {
+  switch (event) {
+    case 'order_created':
+    case 'stock_alert':
+    case 'acis_buy_signal':
+    case 'credit_exceeded':
+      return 'admin';
+    case 'order_approved':
+    case 'order_rejected':
+    case 'delivery_depart':
+    case 'delivery_done':
+      return 'customer';
+    case 'weekly_summary':
+      return 'chairman';
+    default:
+      return null;
+  }
+}
+
 export async function dispatchNotification(params: DispatchParams) {
   const cfg = EVENT_CONFIG[params.event];
   if (!cfg) {
     console.warn('[NOTIFY] unknown event:', params.event);
     return;
   }
+  const recipientType = recipientTypeFor(params.event);
 
   const tasks: Promise<unknown>[] = [];
 
@@ -107,23 +157,30 @@ export async function dispatchNotification(params: DispatchParams) {
       if (missing.length) {
         console.warn(`[NOTIFY] ${tpl.code} 변수 누락 → 발송 생략:`, missing);
       } else {
-        tasks.push(sendKakaoAlimtalk({
-          to: params.to.phone,
-          templateCode: tpl.code,
-          message: renderTemplate(tpl, params.variables),
-          buttons: tpl.buttons,
-          variables: params.variables,
-        }));
+        const message = renderTemplate(tpl, params.variables);
+        tasks.push(
+          sendKakaoAlimtalk({
+            to: params.to.phone, templateCode: tpl.code, message,
+            buttons: tpl.buttons, variables: params.variables,
+          }).then((r) =>
+            logNotification(params.event, 'kakao', recipientType, params.to.phone!,
+              message, r.success ? 'sent' : 'failed', r.mock),
+          ),
+        );
       }
     }
   }
 
   if ((cfg.channel === 'email' || cfg.channel === 'both') && params.to.email && cfg.subject && cfg.body) {
-    tasks.push(sendEmail({
-      to: params.to.email,
-      subject: cfg.subject(params.variables),
-      html: cfg.body(params.variables),
-    }));
+    const subject = cfg.subject(params.variables);
+    const html = cfg.body(params.variables);
+    tasks.push(
+      sendEmail({ to: params.to.email, subject, html })
+        .then((r) =>
+          logNotification(params.event, 'email', recipientType, params.to.email!,
+            subject, r.success ? 'sent' : 'failed', r.mock),
+        ),
+    );
   }
 
   await Promise.allSettled(tasks);
