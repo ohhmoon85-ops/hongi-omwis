@@ -6,6 +6,7 @@ import {
   fetchOutboundRateMap, buildStockSummary, addInbound, adjustLot, setSafetyStock,
   type InventoryLot, type StockSummary, type InventoryLog,
 } from '@/lib/inventory';
+import { uploadCustomsDoc, getCustomsDocUrl } from '@/lib/storage';
 import { syncInventoryToACIS } from '@/lib/acis';
 import { isDevMode } from '@/lib/env';
 import { formatNumber, formatDate, todayISO } from '@/lib/utils';
@@ -14,7 +15,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import toast, { Toaster } from 'react-hot-toast';
-import { RefreshCw, PackagePlus, AlertTriangle, Pencil } from 'lucide-react';
+import { RefreshCw, PackagePlus, AlertTriangle, Pencil, FileText, Paperclip, X } from 'lucide-react';
 
 export function InventoryManager() {
   const [products, setProducts] = useState<Product[]>([]);
@@ -261,6 +262,7 @@ function InboundForm({ products, onDone }: { products: Product[]; onDone: () => 
   const [location, setLocation] = useState('');
   const [importDate, setImportDate] = useState(todayISO());
   const [expiryDate, setExpiryDate] = useState('');
+  const [customsFile, setCustomsFile] = useState<File | null>(null);
   const [saving, setSaving] = useState(false);
 
   async function submit() {
@@ -271,6 +273,19 @@ function InboundForm({ products, onDone }: { products: Product[]; onDone: () => 
     }
     setSaving(true);
     try {
+      // 수입신고필증 사진 업로드 (있으면)
+      let customsDocPath: string | undefined;
+      if (customsFile) {
+        try {
+          const { path } = await uploadCustomsDoc(customsFile);
+          customsDocPath = path;
+        } catch (err) {
+          toast.error(`사진 업로드 실패: ${err instanceof Error ? err.message : '오류'}`);
+          setSaving(false);
+          return;
+        }
+      }
+
       await addInbound({
         product_id: productId,
         quantity: qty,
@@ -278,9 +293,11 @@ function InboundForm({ products, onDone }: { products: Product[]; onDone: () => 
         location: location || undefined,
         import_date: importDate || undefined,
         expiry_date: expiryDate || undefined,
+        customs_doc_url: customsDocPath,
       });
       toast.success('입고 등록 완료');
       setQuantity(''); setLotNumber(''); setLocation(''); setExpiryDate('');
+      setCustomsFile(null);
       setOpen(false);
       onDone();
     } catch (err) {
@@ -340,6 +357,34 @@ function InboundForm({ products, onDone }: { products: Product[]; onDone: () => 
             <Input type="date" value={expiryDate} onChange={(e) => setExpiryDate(e.target.value)}
               className="bg-[#0f1117] border-[#2a2f3e] text-white mt-1" />
           </div>
+          <div className="sm:col-span-2">
+            <label className="text-xs text-gray-400 flex items-center gap-1">
+              <Paperclip className="w-3 h-3" />
+              수입신고필증 사진 (선택)
+            </label>
+            <div className="mt-1 flex items-center gap-2">
+              <input
+                type="file"
+                accept="image/*,application/pdf"
+                onChange={(e) => setCustomsFile(e.target.files?.[0] ?? null)}
+                className="text-xs text-gray-300 file:mr-3 file:px-3 file:py-1.5 file:rounded file:border-0 file:bg-[#1a3d6b] file:text-white file:cursor-pointer file:hover:bg-[#235490]"
+              />
+              {customsFile && (
+                <button
+                  type="button"
+                  onClick={() => setCustomsFile(null)}
+                  className="text-gray-500 hover:text-red-400"
+                  aria-label="첨부 취소"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              )}
+            </div>
+            <p className="text-[10px] text-gray-500 mt-1">
+              {customsFile ? `📎 ${customsFile.name} (${Math.round(customsFile.size / 1024)} KB)`
+                           : 'JPG·PNG·PDF. Storage 버킷 customs-docs 에 저장됩니다 (Private).'}
+            </p>
+          </div>
         </div>
         <div className="flex gap-2">
           <Button onClick={submit} disabled={saving} className="bg-green-600 hover:bg-green-700 text-white">
@@ -349,6 +394,28 @@ function InboundForm({ products, onDone }: { products: Product[]; onDone: () => 
         </div>
       </CardContent>
     </Card>
+  );
+}
+
+// 수입신고필증 보기 — 클릭 시 서명 URL 발급 후 새 탭
+function CustomsDocLink({ path }: { path: string }) {
+  const [loading, setLoading] = useState(false);
+  async function open() {
+    setLoading(true);
+    const url = await getCustomsDocUrl(path);
+    setLoading(false);
+    if (url) window.open(url, '_blank', 'noopener,noreferrer');
+    else toast.error('서명 URL 발급 실패');
+  }
+  return (
+    <button
+      onClick={open}
+      disabled={loading}
+      className="inline-flex items-center gap-1 text-xs text-blue-300 hover:text-blue-200"
+    >
+      <FileText className="w-3 h-3" />
+      {loading ? '발급 중...' : '필증 보기'}
+    </button>
   );
 }
 
@@ -391,6 +458,11 @@ function LotRow({ lot, onSaved }: { lot: InventoryLot; onSaved: () => void }) {
               {lot.expiry_date && <span>· 만료 {formatDate(lot.expiry_date)}</span>}
               <span className={`· ${statusColor}`}>· {lot.status}</span>
             </div>
+            {lot.customs_doc_url && (
+              <div className="mt-1">
+                <CustomsDocLink path={lot.customs_doc_url} />
+              </div>
+            )}
           </div>
           <div className="text-right">
             <div className="text-lg font-bold text-blue-300">

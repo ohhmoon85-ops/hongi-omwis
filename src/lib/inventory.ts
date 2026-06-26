@@ -17,6 +17,7 @@ export interface InventoryLot {
   initial_quantity: number | null;
   import_date: string | null;
   expiry_date: string | null;
+  customs_doc_url: string | null;       // Storage 내부 path (서명 URL 은 표시 시점에 발급)
   status: 'active' | 'reserved' | 'depleted';
 }
 
@@ -71,6 +72,7 @@ export async function fetchInventory(): Promise<InventoryLot[]> {
     initial_quantity: r.initial_quantity != null ? Number(r.initial_quantity) : null,
     import_date: r.import_date,
     expiry_date: r.expiry_date,
+    customs_doc_url: r.customs_doc_url ?? null,
     status: r.status,
   }));
 }
@@ -176,10 +178,11 @@ async function currentUserId(): Promise<string | undefined> {
 export async function addInbound(params: {
   product_id: string;
   quantity: number;
-  lot_number?: string;
+  lot_number?: string;          // = 수입신고필증 번호 (기획서 §3.3)
   location?: string;
   import_date?: string;
   expiry_date?: string;
+  customs_doc_url?: string;     // 수입신고필증 사진 경로 (Storage bucket 내)
 }): Promise<void> {
   const supabase = createClient();
   const { data: lot, error } = await supabase
@@ -192,6 +195,7 @@ export async function addInbound(params: {
       location: params.location || null,
       import_date: params.import_date || null,
       expiry_date: params.expiry_date || null,
+      customs_doc_url: params.customs_doc_url || null,
       status: 'active',
     })
     .select('id')
