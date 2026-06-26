@@ -1,6 +1,7 @@
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { ACISCard } from '@/components/shared/ACISCard';
 import { ChairmanCharts } from '@/components/chairman/ChairmanCharts';
+import { MarketsWidget } from '@/components/chairman/MarketsWidget';
 
 // 👑 회장 전용 모니터링 대시보드 — Read-Only
 // ⚠️ 이 화면에는 어떤 편집·생성·삭제 UI 도 두지 말 것
@@ -29,7 +30,12 @@ export default function ChairmanMonitorPage() {
         <ACISCard />
       </div>
 
-      {/* 차트 섹션 (신규) — 매출 추세 / 거래처 순위 / 주문 상태 */}
+      {/* 환율/원자재 시세 위젯 — ACIS 시계열 */}
+      <div className="mb-6">
+        <MarketsWidget />
+      </div>
+
+      {/* 차트 섹션 — 매출 추세 / 거래처 순위 / 주문 상태 */}
       <ChairmanCharts />
 
       <footer className="mt-8 text-center text-xs text-gray-500">

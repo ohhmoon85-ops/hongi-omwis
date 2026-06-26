@@ -173,6 +173,136 @@ export async function getACISSignal(): Promise<ACISSignalResponse> {
   return fetchACISSignal();
 }
 
+// ─── ACIS 시계열 데이터 — 차트용 ────────────────────────────────────────────
+export interface MarketSeries {
+  aluminum: Array<{ date: string; price: number }>;  // SHFE CNY/MT
+  lme:      Array<{ date: string; price: number }>;  // LME USD/MT
+  cnyKrw:   Array<{ date: string; price: number }>;  // CNY/KRW
+  usdKrw:   Array<{ date: string; price: number }>;  // USD/KRW
+  // 최근값(스냅샷) — 카드 큰 숫자용
+  latest: {
+    aluminum: number;
+    lme: number;
+    cnyKrw: number;
+    usdKrw: number;
+  };
+  // 7일 전 대비 변동률 (%)
+  change7d: {
+    aluminum: number;
+    lme: number;
+    cnyKrw: number;
+    usdKrw: number;
+  };
+  is_mock: boolean;
+  fetched_at: string;
+}
+
+function changePct(series: Array<{ price: number }>, n = 7): number {
+  if (series.length < 2) return 0;
+  const latest = series[series.length - 1].price;
+  const past = series[Math.max(0, series.length - 1 - n)].price;
+  if (past === 0) return 0;
+  return Math.round(((latest - past) / past) * 1000) / 10;
+}
+
+function mockMarketSeries(): MarketSeries {
+  // 30일 흉내 — 천천히 변동하는 패턴
+  const today = new Date();
+  const series = (base: number, vol: number) =>
+    Array.from({ length: 30 }, (_, i) => {
+      const d = new Date(today);
+      d.setDate(d.getDate() - (29 - i));
+      const noise = Math.sin(i / 4) * vol + Math.random() * vol * 0.5;
+      return { date: d.toISOString().slice(0, 10), price: Math.round((base + noise) * 100) / 100 };
+    });
+
+  const aluminum = series(19850, 200);
+  const lme      = series(2620, 30);
+  const cnyKrw   = series(187.4, 1.2);
+  const usdKrw   = series(1382, 8);
+
+  return {
+    aluminum, lme, cnyKrw, usdKrw,
+    latest: {
+      aluminum: aluminum[aluminum.length - 1].price,
+      lme:      lme[lme.length - 1].price,
+      cnyKrw:   cnyKrw[cnyKrw.length - 1].price,
+      usdKrw:   usdKrw[usdKrw.length - 1].price,
+    },
+    change7d: {
+      aluminum: changePct(aluminum),
+      lme:      changePct(lme),
+      cnyKrw:   changePct(cnyKrw),
+      usdKrw:   changePct(usdKrw),
+    },
+    is_mock: true,
+    fetched_at: new Date().toISOString(),
+  };
+}
+
+export async function getMarketSeries(): Promise<MarketSeries> {
+  if (!ACIS_API_URL) return mockMarketSeries();
+  try {
+    const opts = { next: { revalidate: 600 } };
+    const [alRes, lmeRes, ratesRes] = await Promise.all([
+      fetch(`${ACIS_API_URL}/api/aluminum`, opts),
+      fetch(`${ACIS_API_URL}/api/lme`, opts),
+      fetch(`${ACIS_API_URL}/api/rates`, opts),
+    ]);
+    if (!alRes.ok || !lmeRes.ok || !ratesRes.ok) {
+      throw new Error('ACIS endpoints failed');
+    }
+    const aluminum = ((await alRes.json()).data ?? []) as SeriesPoint[];
+    const lme = ((await lmeRes.json()).data ?? []) as SeriesPoint[];
+    const rates = (await ratesRes.json()) as {
+      cny: RateRow[]; usd: RateRow[]; currentCny?: number; currentUsd?: number;
+    };
+
+    const toSeries = (rows: RateRow[]) => rows
+      .map((r) => ({ date: ymdToISO(r.TIME), price: parseFloat(r.DATA_VALUE) }))
+      .filter((r) => !Number.isNaN(r.price))
+      .sort((a, b) => a.date.localeCompare(b.date));
+
+    const cnyKrw = toSeries(rates.cny);
+    const usdKrw = toSeries(rates.usd);
+
+    const aluminumSorted = [...aluminum].sort((a, b) => a.date.localeCompare(b.date));
+    const lmeSorted = [...lme].sort((a, b) => a.date.localeCompare(b.date));
+
+    // 최근 30일만 유지 (차트 가독성)
+    const last30 = <T,>(arr: T[]) => arr.slice(Math.max(0, arr.length - 30));
+
+    const al30 = last30(aluminumSorted);
+    const lme30 = last30(lmeSorted);
+    const cny30 = last30(cnyKrw);
+    const usd30 = last30(usdKrw);
+
+    return {
+      aluminum: al30,
+      lme: lme30,
+      cnyKrw: cny30,
+      usdKrw: usd30,
+      latest: {
+        aluminum: al30[al30.length - 1]?.price ?? 0,
+        lme:      lme30[lme30.length - 1]?.price ?? 0,
+        cnyKrw:   rates.currentCny ?? cny30[cny30.length - 1]?.price ?? 0,
+        usdKrw:   rates.currentUsd ?? usd30[usd30.length - 1]?.price ?? 0,
+      },
+      change7d: {
+        aluminum: changePct(al30),
+        lme:      changePct(lme30),
+        cnyKrw:   changePct(cny30),
+        usdKrw:   changePct(usd30),
+      },
+      is_mock: false,
+      fetched_at: new Date().toISOString(),
+    };
+  } catch (err) {
+    console.error('[ACIS] market series fetch failed:', err);
+    return { ...mockMarketSeries(), is_mock: true };
+  }
+}
+
 export async function syncInventoryToACIS(status: InventoryStatus): Promise<void> {
   if (!ACIS_API_URL) {
     console.log('[ACIS MOCK] inventory sync skipped:', status);
