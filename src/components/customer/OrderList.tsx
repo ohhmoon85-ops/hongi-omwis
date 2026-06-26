@@ -115,52 +115,61 @@ export function CustomerOrderList() {
             return (
               <Card key={o.id} className="hover:shadow-md transition">
                 <CardContent className="py-4">
-                  <div className="flex flex-wrap items-start justify-between gap-3">
-                    <div className="flex-1 min-w-[260px]">
-                      <div className="flex items-center gap-2">
+                  {/* 상단: 주문번호+배지 / 총액 */}
+                  <div className="flex items-start justify-between gap-3 mb-2">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
                         <span className="font-mono text-sm text-gray-700">{o.order_number}</span>
                         <span className={`text-[11px] px-2 py-0.5 rounded-full ${badge.color}`}>
                           {badge.label}
                         </span>
                       </div>
-                      <div className="text-xs text-gray-500 mt-1">
-                        주문일: {formatDate(o.created_at)} · 납기 요청: {formatDate(o.requested_date)}
+                      <div className="text-[11px] text-gray-500 mt-1">
+                        주문일 {formatDate(o.created_at)} · 납기 {formatDate(o.requested_date)}
                       </div>
-                      <ul className="mt-2 text-sm text-gray-700 space-y-0.5">
-                        {o.items.map((it, i) => (
-                          <li key={i} className="flex justify-between gap-3">
-                            <span className="flex-1">{it.product_name}</span>
-                            <span className="text-gray-500">{it.quantity}kg × {formatKRW(it.unit_price)}</span>
-                            <span className="font-semibold text-[#1a3d6b] w-24 text-right">
-                              {formatKRW(it.subtotal)}
-                            </span>
-                          </li>
-                        ))}
-                      </ul>
-                      {o.rejection_reason && (
-                        <div className="mt-2 text-xs text-red-600 bg-red-50 px-2 py-1 rounded">
-                          거절 사유: {o.rejection_reason}
-                        </div>
-                      )}
-                      {o.memo && (
-                        <div className="mt-2 text-xs text-gray-600">
-                          📝 {o.memo}
-                        </div>
-                      )}
                     </div>
-
-                    <div className="text-right">
-                      <div className="text-xs text-gray-500">총액</div>
-                      <div className="text-xl font-bold text-[#1a3d6b]">
+                    <div className="text-right flex-shrink-0">
+                      <div className="text-[10px] text-gray-500">총액</div>
+                      <div className="text-lg sm:text-xl font-bold text-[#1a3d6b] leading-tight">
                         {formatKRW(o.total_amount)}
                       </div>
-                      <button
-                        onClick={() => reorder(o)}
-                        className="mt-2 text-xs text-[#1a3d6b] hover:underline inline-flex items-center gap-1"
-                      >
-                        <Copy className="w-3 h-3" /> 재주문
-                      </button>
                     </div>
+                  </div>
+
+                  {/* 품목 목록 — 모바일은 2행 분리, 데스크톱은 1행 */}
+                  <ul className="text-sm text-gray-700 space-y-1.5 sm:space-y-0.5 border-t border-gray-100 pt-2">
+                    {o.items.map((it, i) => (
+                      <li key={i} className="flex flex-col sm:flex-row sm:justify-between sm:gap-3">
+                        <span className="flex-1 truncate">{it.product_name}</span>
+                        <span className="flex justify-between sm:justify-end sm:gap-3 text-xs sm:text-sm">
+                          <span className="text-gray-500">{it.quantity}kg × {formatKRW(it.unit_price)}</span>
+                          <span className="font-semibold text-[#1a3d6b] sm:w-24 sm:text-right">
+                            {formatKRW(it.subtotal)}
+                          </span>
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+
+                  {o.rejection_reason && (
+                    <div className="mt-2 text-xs text-red-600 bg-red-50 px-2 py-1 rounded">
+                      거절 사유: {o.rejection_reason}
+                    </div>
+                  )}
+                  {o.memo && (
+                    <div className="mt-2 text-xs text-gray-600">
+                      📝 {o.memo}
+                    </div>
+                  )}
+
+                  {/* 재주문 버튼 — 모바일에서 44x44 보장 */}
+                  <div className="mt-3 pt-3 border-t border-gray-100 flex justify-end">
+                    <button
+                      onClick={() => reorder(o)}
+                      className="inline-flex items-center gap-1.5 px-3 h-10 text-sm text-[#1a3d6b] border border-[#1a3d6b]/20 rounded-lg hover:bg-[#1a3d6b] hover:text-white transition"
+                    >
+                      <Copy className="w-4 h-4" /> 재주문
+                    </button>
                   </div>
                 </CardContent>
               </Card>

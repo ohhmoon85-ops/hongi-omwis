@@ -142,7 +142,7 @@ export function OrderForm({ products, customerName }: Props) {
     <>
       <Toaster position="top-center" />
 
-      <form onSubmit={onSubmit} className="space-y-4 max-w-3xl">
+      <form onSubmit={onSubmit} className="space-y-4 max-w-3xl pb-32 sm:pb-4">
         <Card>
           <CardHeader>
             <CardTitle className="text-base">품목 선택</CardTitle>
@@ -154,52 +154,58 @@ export function OrderForm({ products, customerName }: Props) {
               return (
                 <div
                   key={idx}
-                  className="flex flex-wrap items-end gap-2 p-3 rounded-lg border border-gray-200 bg-gray-50/50"
+                  className="p-3 sm:p-4 rounded-lg border border-gray-200 bg-gray-50/50 relative"
                 >
-                  <div className="flex-1 min-w-[200px]">
-                    <Label className="text-xs text-gray-600">품목</Label>
-                    <select
-                      value={line.product_id}
-                      onChange={(e) => updateLine(idx, { product_id: e.target.value })}
-                      className="mt-1 w-full h-10 px-3 rounded-md border border-input bg-background text-sm"
-                    >
-                      {products.map((p) => (
-                        <option key={p.id} value={p.id}>
-                          [{PRODUCT_TYPE_LABEL[p.type]}] {p.name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
+                  {/* 모바일 우선 — 세로 stack, 데스크톱에서 가로 정렬 */}
+                  <div className="flex flex-col sm:flex-row sm:items-end gap-3">
+                    <div className="flex-1 min-w-0">
+                      <Label className="text-xs text-gray-600">품목</Label>
+                      <select
+                        value={line.product_id}
+                        onChange={(e) => updateLine(idx, { product_id: e.target.value })}
+                        className="mt-1 w-full h-12 sm:h-10 px-3 rounded-md border border-input bg-background text-base sm:text-sm"
+                      >
+                        {products.map((p) => (
+                          <option key={p.id} value={p.id}>
+                            [{PRODUCT_TYPE_LABEL[p.type]}] {p.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
 
-                  <div className="w-32">
-                    <Label className="text-xs text-gray-600">수량 ({p?.unit ?? 'kg'})</Label>
-                    <Input
-                      type="number"
-                      inputMode="decimal"
-                      min="0"
-                      step="0.1"
-                      value={line.quantity}
-                      onChange={(e) => updateLine(idx, { quantity: e.target.value })}
-                      placeholder="0"
-                      className="mt-1"
-                    />
-                  </div>
+                    <div className="flex items-end gap-3">
+                      <div className="w-28 sm:w-32">
+                        <Label className="text-xs text-gray-600">수량 ({p?.unit ?? 'kg'})</Label>
+                        <Input
+                          type="number"
+                          inputMode="decimal"
+                          min="0"
+                          step="0.1"
+                          value={line.quantity}
+                          onChange={(e) => updateLine(idx, { quantity: e.target.value })}
+                          placeholder="0"
+                          className="mt-1 h-12 sm:h-10 text-base sm:text-sm"
+                        />
+                      </div>
 
-                  <div className="w-32 text-right">
-                    <div className="text-xs text-gray-500">금액</div>
-                    <div className="text-sm font-semibold text-[#1a3d6b] mt-2">
-                      {formatKRW(subtotal)}
+                      <div className="flex-1 sm:w-32 text-right pb-1">
+                        <div className="text-xs text-gray-500">금액</div>
+                        <div className="text-base sm:text-sm font-semibold text-[#1a3d6b] mt-1">
+                          {formatKRW(subtotal)}
+                        </div>
+                      </div>
                     </div>
                   </div>
 
+                  {/* 삭제 버튼 — 모바일에서 우측 상단 충분한 터치 영역 (44x44) */}
                   {lines.length > 1 && (
                     <button
                       type="button"
                       onClick={() => removeLine(idx)}
-                      className="p-2 text-gray-400 hover:text-red-500"
+                      className="absolute top-1 right-1 p-3 text-gray-400 hover:text-red-500 active:bg-red-50 rounded-full"
                       aria-label="라인 삭제"
                     >
-                      <X className="w-4 h-4" />
+                      <X className="w-5 h-5" />
                     </button>
                   )}
                 </div>
@@ -210,9 +216,9 @@ export function OrderForm({ products, customerName }: Props) {
               type="button"
               variant="outline"
               onClick={addLine}
-              className="w-full"
+              className="w-full h-12 text-base"
             >
-              <Plus className="w-4 h-4 mr-1" /> 품목 추가
+              <Plus className="w-5 h-5 mr-1" /> 품목 추가
             </Button>
           </CardContent>
         </Card>
@@ -229,6 +235,7 @@ export function OrderForm({ products, customerName }: Props) {
                 onChange={(e) => setRequestedDate(e.target.value)}
                 min={todayISO()}
                 required
+                className="h-12 sm:h-10 text-base sm:text-sm"
               />
               <p className="text-xs text-gray-500 mt-1">
                 ※ 관리자가 납기일을 조정할 수 있습니다
@@ -246,14 +253,14 @@ export function OrderForm({ products, customerName }: Props) {
                 onChange={(e) => setMemo(e.target.value)}
                 rows={3}
                 placeholder="포장·납품 시간 등 요청 사항"
-                className="w-full px-3 py-2 rounded-md border border-input bg-background text-sm resize-none"
+                className="w-full px-3 py-2 rounded-md border border-input bg-background text-base sm:text-sm resize-none"
               />
             </CardContent>
           </Card>
         </div>
 
-        {/* 미리보기 + 제출 */}
-        <Card className="bg-[#f0f4fa] border-[#1a3d6b]/20">
+        {/* 데스크톱 — 정상 카드 */}
+        <Card className="hidden sm:block bg-[#f0f4fa] border-[#1a3d6b]/20">
           <CardContent className="pt-6">
             <div className="flex items-center justify-between mb-4">
               <div>
@@ -276,6 +283,25 @@ export function OrderForm({ products, customerName }: Props) {
             </p>
           </CardContent>
         </Card>
+
+        {/* 모바일 — 화면 하단 sticky 바 (총액 + 제출) */}
+        <div className="sm:hidden fixed bottom-0 left-0 right-0 z-20 bg-white border-t border-gray-200 px-4 py-3 shadow-[0_-4px_12px_rgba(0,0,0,0.08)]">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <div className="text-[10px] text-gray-500">주문 총액</div>
+              <div className="text-2xl font-bold text-[#1a3d6b] leading-tight">
+                {formatKRW(total)}
+              </div>
+            </div>
+            <Button
+              type="submit"
+              disabled={submitting || total === 0}
+              className="bg-[#1a3d6b] hover:bg-[#235490] text-white h-12 px-6 text-base flex-shrink-0"
+            >
+              {submitting ? '제출 중...' : '주문 제출'}
+            </Button>
+          </div>
+        </div>
       </form>
     </>
   );

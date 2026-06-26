@@ -34,26 +34,28 @@ export default async function CustomerOrderPage() {
   return (
     <div className="min-h-screen bg-app-light p-4 sm:p-6 text-[#1c1c1c]">
       <header className="mb-6 max-w-3xl">
-        <div className="flex items-center justify-between">
-          <div>
-            <div className="text-sm text-[#1a3d6b] font-semibold">OMWIS · 거래처 주문</div>
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex-1 min-w-0">
+            <div className="text-xs sm:text-sm text-[#1a3d6b] font-semibold">OMWIS · 거래처 주문</div>
             <h1 className="text-2xl sm:text-3xl font-bold mt-1">주문하기</h1>
-            <p className="text-sm text-gray-600 mt-1">
-              <span className="font-semibold">{customer.company_name}</span>
-              {customer.former_dealer && (
-                <span className="text-xs text-gray-500 ml-2">
-                  ({customer.former_dealer} → 본사 직거래)
-                </span>
-              )}
-              <span className="ml-3 text-xs text-gray-500">
-                신용 한도 {formatKRW(customer.credit_limit)} ·
-                현재 미수 {formatKRW(customer.current_balance)}
-              </span>
-            </p>
+            <div className="mt-2 space-y-1">
+              <div className="text-sm">
+                <span className="font-semibold text-gray-800">{customer.company_name}</span>
+                {customer.former_dealer && (
+                  <span className="text-xs text-gray-500 ml-2">
+                    ({customer.former_dealer} → 본사 직거래)
+                  </span>
+                )}
+              </div>
+              <div className="text-xs text-gray-600 flex flex-wrap gap-x-3 gap-y-1">
+                <span>신용 한도 <b>{formatKRW(customer.credit_limit)}</b></span>
+                <span>현재 미수 <b className={customer.current_balance > customer.credit_limit * 0.9 ? 'text-red-600' : ''}>{formatKRW(customer.current_balance)}</b></span>
+              </div>
+            </div>
           </div>
           <Link
             href="/customer/orders"
-            className="text-sm text-[#1a3d6b] hover:underline"
+            className="flex-shrink-0 inline-flex items-center gap-1 px-3 h-10 sm:h-9 rounded-lg bg-white border border-[#1a3d6b]/20 text-[#1a3d6b] hover:bg-[#1a3d6b] hover:text-white transition text-sm whitespace-nowrap"
           >
             주문 내역 →
           </Link>
