@@ -7,12 +7,24 @@ export const metadata: Metadata = {
   robots: 'noindex, nofollow', // 폐쇄형: 외부 검색엔진 노출 차단
 };
 
-// 첫 페인트 전에 localStorage 의 테마 값을 html 에 적용 → FOUC (다크 → 라이트 깜빡임) 방지
+// 첫 페인트 전에 테마 결정 → FOUC (다크 ↔ 라이트 깜빡임) 방지
+// 1) localStorage 'omwis-theme-mode' = 'auto'|'light'|'dark' 확인
+// 2) 'auto' 또는 미설정이면 현재 시각으로 결정 (07:00~18:59 = 라이트)
+// 3) 'light'/'dark' 는 그대로 적용
 const themeInitScript = `
 (function() {
   try {
-    var t = localStorage.getItem('omwis-theme');
-    if (t === 'light') document.documentElement.classList.add('omwis-light');
+    var m = localStorage.getItem('omwis-theme-mode');
+    // 구버전 키 호환
+    if (!m) m = localStorage.getItem('omwis-theme');
+    var light;
+    if (m === 'light') light = true;
+    else if (m === 'dark') light = false;
+    else {
+      var h = new Date().getHours();
+      light = (h >= 7 && h < 19);
+    }
+    if (light) document.documentElement.classList.add('omwis-light');
   } catch (e) {}
 })();
 `;
