@@ -1,8 +1,14 @@
 // ============================================================================
-// OMWIS 시드 유저 생성 스크립트
+// OMWIS 시드 유저 생성·정리 스크립트 (멱등)
 // ----------------------------------------------------------------------------
-// 사전 조건: Supabase SQL Editor 에 supabase/schema.sql 적용 완료
+// 사전 조건: Supabase SQL Editor 에 supabase/schema.sql 또는 run-all.sql 적용
 // 실행 방법: node --env-file=.env.local scripts/seed-users.mjs
+// ----------------------------------------------------------------------------
+// 이 스크립트가 하는 일:
+//   1) OBSOLETE_EMAILS — 구버전 시드의 흔적 자동 정리
+//   2) USERS — 정본 5계정을 생성·갱신 (모두 비번 1234)
+//   3) 거래처 회사명으로 customer_id 자동 매칭
+//   4) 모든 단계가 멱등 — 여러 번 실행해도 안전
 // ============================================================================
 
 import { createClient } from '@supabase/supabase-js';
@@ -28,16 +34,25 @@ const supabase = createClient(SUPABASE_URL, SERVICE_KEY, {
 // ⚠️ 개발 단계 — 모든 계정 비밀번호 1234 통일 (운영 전환 시 각자 변경)
 const DEV_PASSWORD = '1234';
 
+// ─── 정본 5계정 — 모두 @hongi.co.kr / @samscb.kr 통일 ──────────────────────
 const USERS = [
-  // ─── 사용자가 직접 만드신 3계정 (비번 1234 로 재설정) ─────────────────────
+  { email: 'chairman@hongi.co.kr', password: DEV_PASSWORD, role: 'chairman',    name: '홍지 회장' },
   { email: 'admin@hongi.co.kr',    password: DEV_PASSWORD, role: 'super_admin', name: '변지수 (대표)' },
+  { email: 'ops@hongi.co.kr',      password: DEV_PASSWORD, role: 'admin',       name: '운영 직원' },
   { email: 'driver@hongi.co.kr',   password: DEV_PASSWORD, role: 'driver',      name: '이배송' },
   { email: 'customer@samscb.kr',   password: DEV_PASSWORD, role: 'customer',    name: '김민수',
     customer_company: '(주)삼성회로기판' },
+];
 
-  // ─── chairman / admin 역할 (사용자 set 에 없는 역할) ────────────────────────
-  { email: 'chairman@hongi.test',  password: DEV_PASSWORD, role: 'chairman',    name: '홍지 회장' },
-  { email: 'admin@hongi.test',     password: DEV_PASSWORD, role: 'admin',       name: '운영 직원' },
+// ─── 자동 정리: 구버전 시드의 흔적 ─────────────────────────────────────────
+// 같은 역할을 위 USERS 목록에서 다른 이메일로 통합했기 때문에 정리 대상.
+// 정본과 충돌하지 않는 사용자 정의 계정은 영향 받지 않음.
+const OBSOLETE_EMAILS = [
+  'byun@hongi.co.kr',     // → admin@hongi.co.kr (super_admin)
+  'driver@hongi.test',    // → driver@hongi.co.kr
+  'kim@samscb.kr',        // → customer@samscb.kr
+  'chairman@hongi.test',  // → chairman@hongi.co.kr
+  'admin@hongi.test',     // → ops@hongi.co.kr
 ];
 
 async function ensureCustomerId(companyName) {
@@ -53,17 +68,19 @@ async function ensureCustomerId(companyName) {
   return data?.id ?? null;
 }
 
-async function findUserByEmail(email) {
-  // listUsers 는 페이지네이션 — 1000명까지 한 번에 조회 (OMWIS 초기 규모 충분)
+async function listAllUsers() {
   const { data, error } = await supabase.auth.admin.listUsers({ page: 1, perPage: 1000 });
   if (error) throw error;
-  return data.users.find((u) => u.email === email) ?? null;
+  return data.users;
 }
 
-async function createOrUpdateUser({ email, password, name }) {
-  const existing = await findUserByEmail(email);
+function findUserByEmail(users, email) {
+  return users.find((u) => u.email === email) ?? null;
+}
+
+async function createOrUpdateUser(users, { email, password, name }) {
+  const existing = findUserByEmail(users, email);
   if (existing) {
-    // 비밀번호 재설정 (멱등 실행을 위해)
     const { error } = await supabase.auth.admin.updateUserById(existing.id, {
       password,
       user_metadata: { name },
@@ -71,7 +88,6 @@ async function createOrUpdateUser({ email, password, name }) {
     if (error) throw error;
     return { id: existing.id, created: false };
   }
-
   const { data, error } = await supabase.auth.admin.createUser({
     email, password,
     email_confirm: true,
@@ -88,25 +104,50 @@ async function upsertProfile(userId, role, name, customerId) {
   if (error) throw error;
 }
 
+async function deleteObsolete(users) {
+  const targets = OBSOLETE_EMAILS
+    .map((email) => ({ email, user: findUserByEmail(users, email) }))
+    .filter((t) => t.user);
+
+  if (targets.length === 0) {
+    console.log('🧹 정리 대상 없음 (이미 깨끗)');
+    return;
+  }
+
+  console.log(`🧹 구버전 시드 ${targets.length}개 자동 정리`);
+  for (const { email, user } of targets) {
+    const { error } = await supabase.auth.admin.deleteUser(user.id);
+    if (error) console.warn(`  ❌ ${email}: ${error.message}`);
+    else       console.log(`  🗑️  ${email}`);
+  }
+  console.log('');
+}
+
 async function main() {
-  console.log('🌱 OMWIS 시드 유저 생성');
+  console.log('🌱 OMWIS 시드 유저 생성·정리');
   console.log(`📡 Supabase: ${SUPABASE_URL}`);
   console.log('');
 
+  // 1) 구버전 정리
+  let users = await listAllUsers();
+  await deleteObsolete(users);
+
+  // 2) 정본 5계정 생성/갱신 (목록 다시 가져오기 — 정리 후 상태 반영)
+  users = await listAllUsers();
   let success = 0;
   let failed  = 0;
 
   for (const u of USERS) {
     const tag = `[${u.role.padEnd(12)}] ${u.email.padEnd(28)}`;
     try {
-      const { id, created } = await createOrUpdateUser(u);
+      const { id, created } = await createOrUpdateUser(users, u);
 
       let customerId = null;
       if (u.customer_company) {
         customerId = await ensureCustomerId(u.customer_company);
         if (!customerId) {
           console.warn(`${tag} ⚠️ 거래처 "${u.customer_company}" 미존재`);
-          console.warn(`  → schema.sql 의 INSERT INTO customers ... 시드가 적용되었는지 확인하세요`);
+          console.warn('  → schema.sql 의 거래처 시드가 적용되었는지 확인하세요');
         }
       }
 
@@ -123,13 +164,13 @@ async function main() {
   console.log(`완료: 성공 ${success} / 실패 ${failed}`);
   console.log('');
   console.log('📋 로그인 정보 요약:');
-  console.log('┌─────────────────────────────────┬─────────────────┐');
-  console.log('│ 이메일                           │ 비밀번호          │');
-  console.log('├─────────────────────────────────┼─────────────────┤');
+  console.log('┌─────────────────────────────────┬───────────┬─────────────────┐');
+  console.log('│ 이메일                            │ 비밀번호  │ 역할             │');
+  console.log('├─────────────────────────────────┼───────────┼─────────────────┤');
   for (const u of USERS) {
-    console.log(`│ ${u.email.padEnd(31)} │ ${u.password.padEnd(15)} │  ← ${u.role}`);
+    console.log(`│ ${u.email.padEnd(31)} │ ${u.password.padEnd(9)} │ ${u.role.padEnd(15)} │`);
   }
-  console.log('└─────────────────────────────────┴─────────────────┘');
+  console.log('└─────────────────────────────────┴───────────┴─────────────────┘');
   console.log('');
   console.log('💡 비밀번호는 임시값입니다. 운영 전환 시 각자 변경하세요.');
 }
