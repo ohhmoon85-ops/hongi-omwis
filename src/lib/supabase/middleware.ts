@@ -1,6 +1,7 @@
 import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
 import type { UserRole } from '@/types';
+import { isSupabaseConfigured } from '@/lib/env';
 
 // 역할별 허용 경로 prefix
 const ROLE_ROUTES: Record<UserRole, string[]> = {
@@ -37,9 +38,9 @@ export async function updateSession(request: NextRequest) {
   const path = request.nextUrl.pathname;
   const isPublic = PUBLIC_PATHS.some((p) => path.startsWith(p));
 
-  // ─── 개발 모드: Supabase 미설정 ──────────────────────────────
+  // ─── 개발 모드: Supabase 미설정 또는 placeholder 값 ─────────────
   // dev_mock_role 쿠키로 역할 시뮬레이션
-  if (!supabaseUrl || !supabaseKey) {
+  if (!isSupabaseConfigured()) {
     const mockRole = request.cookies.get('dev_mock_role')?.value as UserRole | undefined;
 
     // 비로그인 상태 + 보호 경로 → /login

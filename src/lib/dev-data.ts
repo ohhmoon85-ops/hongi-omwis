@@ -5,7 +5,8 @@
 
 import type { Customer, Product } from '@/types';
 
-export const isDevMode = !process.env.NEXT_PUBLIC_SUPABASE_URL;
+// isDevMode 는 lib/env 에 단일 정의 — 여기는 호환용 재export
+export { isDevMode } from './env';
 
 export const DEV_PRODUCTS: Product[] = [
   {

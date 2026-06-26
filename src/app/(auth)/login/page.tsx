@@ -8,9 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import toast, { Toaster } from 'react-hot-toast';
 import type { UserRole } from '@/types';
-
-// Supabase 미설정 → 개발 모드 (1234/1234 우회 로그인)
-const isDevMode = !process.env.NEXT_PUBLIC_SUPABASE_URL;
+import { isDevMode } from '@/lib/env';
 
 const ROLE_HOME: Record<UserRole, string> = {
   chairman:    '/chairman/monitor',
