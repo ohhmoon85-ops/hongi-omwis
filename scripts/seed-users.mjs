@@ -25,13 +25,19 @@ const supabase = createClient(SUPABASE_URL, SERVICE_KEY, {
   realtime: { transport: ws },
 });
 
+// ⚠️ 개발 단계 — 모든 계정 비밀번호 1234 통일 (운영 전환 시 각자 변경)
+const DEV_PASSWORD = '1234';
+
 const USERS = [
-  { email: 'chairman@hongi.test', password: 'chairman1234', role: 'chairman',    name: '홍지 회장' },
-  { email: 'byun@hongi.co.kr',    password: 'byun1234',     role: 'super_admin', name: '변지수 (대표)' },
-  { email: 'admin@hongi.test',    password: 'admin1234',    role: 'admin',       name: '운영 직원' },
-  { email: 'driver@hongi.test',   password: 'driver1234',   role: 'driver',      name: '배송 직원' },
-  { email: 'kim@samscb.kr',       password: 'kim1234',      role: 'customer',    name: '김민수',
+  // ─── 사용자가 직접 만드신 3계정 (비번 1234 로 재설정) ─────────────────────
+  { email: 'admin@hongi.co.kr',    password: DEV_PASSWORD, role: 'super_admin', name: '변지수 (대표)' },
+  { email: 'driver@hongi.co.kr',   password: DEV_PASSWORD, role: 'driver',      name: '이배송' },
+  { email: 'customer@samscb.kr',   password: DEV_PASSWORD, role: 'customer',    name: '김민수',
     customer_company: '(주)삼성회로기판' },
+
+  // ─── chairman / admin 역할 (사용자 set 에 없는 역할) ────────────────────────
+  { email: 'chairman@hongi.test',  password: DEV_PASSWORD, role: 'chairman',    name: '홍지 회장' },
+  { email: 'admin@hongi.test',     password: DEV_PASSWORD, role: 'admin',       name: '운영 직원' },
 ];
 
 async function ensureCustomerId(companyName) {
