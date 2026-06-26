@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/label';
 import toast, { Toaster } from 'react-hot-toast';
 import type { UserRole } from '@/types';
 import { isDevMode } from '@/lib/env';
+import { ThemeToggle } from '@/components/shared/ThemeToggle';
 
 const ROLE_HOME: Record<UserRole, string> = {
   chairman:    '/chairman/monitor',
@@ -181,8 +182,12 @@ function DevRoleButton({ onClick, label }: { onClick: () => void; label: string 
 
 export default function LoginPage() {
   return (
-    <div className="min-h-screen flex items-center justify-center bg-app p-4">
+    <div className="min-h-screen flex items-center justify-center bg-app p-4 relative">
       <Toaster position="top-center" />
+      {/* 주간/야간 모드 토글 — 우측 상단 고정 */}
+      <div className="absolute top-4 right-4">
+        <ThemeToggle variant="dark" />
+      </div>
       <Suspense fallback={<div className="text-gray-400">불러오는 중…</div>}>
         <LoginForm />
       </Suspense>

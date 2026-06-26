@@ -113,3 +113,113 @@
     box-shadow: 0 10px 30px -12px rgba(200, 150, 46, 0.45);
   }
 }
+
+/* ============================================================================
+ * 주간 모드 (omwis-light class 가 html 에 적용된 상태)
+ * 다크 테마용 하드코딩 색상을 라이트 톤으로 오버라이드.
+ * 골드 (#c8962e) 는 양쪽 모두 OK 라 유지.
+ * ============================================================================ */
+
+/* 앱 전체 배경 */
+html.omwis-light body {
+  background-color: #f5f7fa;
+}
+html.omwis-light .bg-app {
+  background-color: #f5f7fa !important;
+  background-image:
+    radial-gradient(900px 480px at 92% -10%, rgba(26, 61, 107, 0.06), transparent 60%),
+    radial-gradient(720px 420px at -6% 0%, rgba(200, 150, 46, 0.06), transparent 55%) !important;
+}
+
+/* 페이지/카드 배경 */
+html.omwis-light .bg-\[\#0f1117\],
+html.omwis-light .bg-\[\#0b0d13\]\/80 {
+  background-color: #ffffff !important;
+  backdrop-filter: none !important;
+}
+html.omwis-light .bg-\[\#171b26\],
+html.omwis-light .bg-\[\#13161f\],
+html.omwis-light .bg-\[\#181c28\],
+html.omwis-light .bg-\[\#141823\]\/90 {
+  background-color: #ffffff !important;
+  backdrop-filter: none !important;
+}
+/* 카드의 dark gradient → 흰색 */
+html.omwis-light [class*="from-[#181c28]"][class*="to-[#13161f]"] {
+  background: #ffffff !important;
+}
+/* 카드 입체감 — 다크 그림자 → 부드러운 라이트 그림자 */
+html.omwis-light .card-elevated {
+  box-shadow:
+    0 1px 2px rgba(15, 23, 42, 0.04),
+    0 4px 14px rgba(15, 23, 42, 0.06) !important;
+}
+
+/* 텍스트 색상 */
+html.omwis-light .text-white,
+html.omwis-light .text-gray-100 {
+  color: #111827 !important;
+}
+html.omwis-light .text-gray-200 {
+  color: #1f2937 !important;
+}
+html.omwis-light .text-gray-300 {
+  color: #374151 !important;
+}
+html.omwis-light .text-gray-400 {
+  color: #4b5563 !important;
+}
+html.omwis-light .text-gray-500 {
+  color: #6b7280 !important;
+}
+html.omwis-light .text-gray-600 {
+  color: #4b5563 !important;
+}
+
+/* 경계선 */
+html.omwis-light .border-\[\#1f2433\],
+html.omwis-light .border-\[\#2a2f3e\] {
+  border-color: #e5e7eb !important;
+}
+html.omwis-light .border-white\/\[0\.06\],
+html.omwis-light .border-white\/\[0\.05\] {
+  border-color: #e5e7eb !important;
+}
+html.omwis-light .ring-white\/\[0\.04\] {
+  --tw-ring-color: rgba(15, 23, 42, 0.04) !important;
+}
+html.omwis-light .ring-\[\#c8962e\]\/15 {
+  --tw-ring-color: rgba(200, 150, 46, 0.25) !important;
+}
+
+/* divide-y 라인 색상 */
+html.omwis-light .divide-\[\#1f2433\] > * + * {
+  border-color: #e5e7eb !important;
+}
+
+/* 호버 상태 */
+html.omwis-light .hover\:bg-white\/\[0\.05\]:hover,
+html.omwis-light .hover\:bg-white\/\[0\.02\]:hover {
+  background-color: rgba(26, 61, 107, 0.04) !important;
+}
+
+/* Input 다크 배경 → 흰색 */
+html.omwis-light input.bg-\[\#0f1117\],
+html.omwis-light textarea.bg-\[\#0f1117\],
+html.omwis-light select.bg-\[\#0f1117\] {
+  background-color: #ffffff !important;
+  color: #111827 !important;
+}
+
+/* AdminNav의 active 메뉴: 골드 톤 살짝 강화 */
+html.omwis-light .bg-\[\#c8962e\]\/15 {
+  background-color: rgba(200, 150, 46, 0.18) !important;
+}
+
+/* 가로 스크롤바: 라이트에서는 옅게 */
+html.omwis-light ::-webkit-scrollbar-thumb {
+  background: rgba(15, 23, 42, 0.12);
+}
+html.omwis-light ::-webkit-scrollbar-thumb:hover {
+  background: rgba(200, 150, 46, 0.35);
+}

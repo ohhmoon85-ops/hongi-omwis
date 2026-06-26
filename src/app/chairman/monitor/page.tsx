@@ -5,6 +5,7 @@ import { ACISCard } from '@/components/shared/ACISCard';
 import { ChairmanCharts } from '@/components/chairman/ChairmanCharts';
 import { MarketsWidget } from '@/components/chairman/MarketsWidget';
 import { LogoutButton } from '@/components/shared/LogoutButton';
+import { ThemeToggle } from '@/components/shared/ThemeToggle';
 
 // 👑 회장 전용 모니터링 대시보드 — Read-Only
 // ⚠️ 이 화면에는 어떤 편집·생성·삭제 UI 도 두지 말 것
@@ -25,6 +26,7 @@ export default function ChairmanMonitorPage() {
           <span className="text-xs px-3 py-1 rounded-full bg-[#c8962e]/15 text-[#c8962e] border border-[#c8962e]/30">
             Read-Only
           </span>
+          <ThemeToggle variant="dark" />
           <Link
             href="/account"
             className="inline-flex items-center gap-1.5 px-3 h-9 rounded-lg text-sm text-gray-400 hover:text-white hover:bg-white/[0.05] border border-white/[0.06] transition"

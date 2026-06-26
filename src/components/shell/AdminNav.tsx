@@ -7,6 +7,7 @@ import { ROLE_LABEL, type UserRole } from '@/types';
 import {
   LayoutDashboard, ClipboardList, Building2, Package, Truck, Bot, Bell, User, Users, LogOut,
 } from 'lucide-react';
+import { ThemeToggle } from '@/components/shared/ThemeToggle';
 
 interface NavItem {
   href: string;
@@ -80,6 +81,7 @@ export function AdminNav({ role }: { role: UserRole | null }) {
               {ROLE_LABEL[role]}
             </span>
           )}
+          <ThemeToggle variant="dark" />
           <Link
             href="/account"
             className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm text-gray-400 hover:text-white hover:bg-white/[0.05] transition-colors"
