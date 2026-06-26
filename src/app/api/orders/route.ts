@@ -2,14 +2,12 @@ import { NextResponse, type NextRequest } from 'next/server';
 import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { dispatchNotification } from '@/lib/notifications';
 import { isDevMode } from '@/lib/dev-data';
+import { apiError } from '@/lib/api-error';
 
 // ─── POST: 거래처 주문 접수 ─────────────────────────────────────────────
 export async function POST(req: NextRequest) {
   if (isDevMode) {
-    return NextResponse.json(
-      { error: '개발 모드에서는 클라이언트 localStorage 를 사용합니다' },
-      { status: 400 },
-    );
+    return apiError('validation', '개발 모드에서는 클라이언트 localStorage 를 사용합니다');
   }
 
   const body = await req.json();
@@ -20,13 +18,13 @@ export async function POST(req: NextRequest) {
   };
 
   if (!items?.length) {
-    return NextResponse.json({ error: 'items required' }, { status: 400 });
+    return apiError('validation', '품목을 1개 이상 입력해주세요');
   }
 
   const supabase = createClient();
   const { data: { user }, error: authErr } = await supabase.auth.getUser();
   if (authErr || !user) {
-    return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
+    return apiError('unauthorized');
   }
 
   const { data: profile } = await supabase
@@ -34,10 +32,10 @@ export async function POST(req: NextRequest) {
   // 명시적 role 검증: customer 만 자사 주문 생성 가능
   // (createAdminClient 가 service_role 로 RLS 우회 후 INSERT 하므로 API 단에서 보강)
   if (!profile || profile.role !== 'customer') {
-    return NextResponse.json({ error: 'customer role required' }, { status: 403 });
+    return apiError('forbidden', '거래처 계정만 주문할 수 있습니다');
   }
   if (!profile.customer_id) {
-    return NextResponse.json({ error: 'no customer profile' }, { status: 403 });
+    return apiError('forbidden', '거래처 프로필이 연결되어 있지 않습니다. 관리자에게 문의하세요.');
   }
 
   // service role 클라이언트로 주문번호 생성 + 인서트
@@ -61,7 +59,7 @@ export async function POST(req: NextRequest) {
     .single();
 
   if (orderErr || !order) {
-    return NextResponse.json({ error: orderErr?.message ?? 'insert failed' }, { status: 500 });
+    return apiError('internal', '주문 저장에 실패했습니다', orderErr?.message);
   }
 
   // 주문 상세 인서트
@@ -116,7 +114,7 @@ export async function GET() {
     .order('created_at', { ascending: false });
 
   if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return apiError('internal', '주문 조회 중 오류가 발생했습니다', error.message);
   }
 
   return NextResponse.json(orders);

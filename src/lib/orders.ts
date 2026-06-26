@@ -171,7 +171,10 @@ export async function reorder(order: DevOrder): Promise<string> {
       memo: order.memo ?? undefined,
     }),
   });
-  if (!res.ok) throw new Error(await res.text());
+  if (!res.ok) {
+    const { readApiError } = await import('@/lib/api-error');
+    throw new Error(await readApiError(res));
+  }
   const data = await res.json();
   return data.order_number as string;
 }
