@@ -5,25 +5,79 @@ import Link from 'next/link';
 import { ChevronLeft, AlertCircle } from 'lucide-react';
 import { getDevCustomer } from '@/lib/dev-customers';
 import { loadDevOrders } from '@/lib/dev-orders';
-import { isDevMode } from '@/lib/dev-data';
+import { isDevMode } from '@/lib/env';
+import { createClient } from '@/lib/supabase/client';
 import { CustomerForm } from './CustomerForm';
+import { CustomerPricesEditor } from './CustomerPricesEditor';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { formatKRW, formatDate } from '@/lib/utils';
-import { ORDER_STATUS_BADGE } from '@/types';
+import { ORDER_STATUS_BADGE, type OrderStatus } from '@/types';
 import type { Customer } from '@/types';
 
 interface Props { customerId: string }
 
+interface OrderSummary {
+  id: string;
+  order_number: string;
+  status: OrderStatus;
+  total_amount: number;
+  created_at: string;
+  item_count: number;
+}
+
 export function CustomerDetail({ customerId }: Props) {
   const [customer, setCustomer] = useState<Customer | null>(null);
+  const [orders, setOrders] = useState<OrderSummary[]>([]);
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
-    if (isDevMode) {
-      const c = getDevCustomer(customerId);
-      setCustomer(c ?? null);
+    async function load() {
+      if (isDevMode) {
+        const c = getDevCustomer(customerId);
+        setCustomer(c ?? null);
+        setOrders(
+          loadDevOrders()
+            .filter((o) => o.customer_id === customerId)
+            .map((o) => ({
+              id: o.id,
+              order_number: o.order_number,
+              status: o.status,
+              total_amount: o.total_amount,
+              created_at: o.created_at,
+              item_count: o.items.length,
+            })),
+        );
+        setLoaded(true);
+        return;
+      }
+
+      // ─── 운영 모드: Supabase 직접 조회 ───────────────────────────
+      const supabase = createClient();
+      const [custRes, ordersRes] = await Promise.all([
+        supabase.from('customers').select('*').eq('id', customerId).maybeSingle(),
+        supabase
+          .from('orders')
+          .select('id, order_number, status, total_amount, created_at, order_items(id)')
+          .eq('customer_id', customerId)
+          .order('created_at', { ascending: false })
+          .limit(20),
+      ]);
+
+      setCustomer((custRes.data as Customer) ?? null);
+      type OrderRow = OrderSummary & { order_items?: Array<{ id: string }> };
+      setOrders(
+        ((ordersRes.data ?? []) as OrderRow[]).map((o) => ({
+          id: o.id,
+          order_number: o.order_number,
+          status: o.status,
+          total_amount: o.total_amount,
+          created_at: o.created_at,
+          item_count: o.order_items?.length ?? 0,
+        })),
+      );
+      setLoaded(true);
     }
-    setLoaded(true);
+    load();
   }, [customerId]);
 
   if (!loaded) return <div className="text-sm text-gray-500">불러오는 중...</div>;
@@ -43,11 +97,6 @@ export function CustomerDetail({ customerId }: Props) {
       </Card>
     );
   }
-
-  // 이 거래처의 주문 이력 (dev-orders 에서 customer_id 매칭)
-  const orders = isDevMode
-    ? loadDevOrders().filter((o) => o.customer_id === customerId)
-    : [];
 
   return (
     <div className="space-y-6">
@@ -80,7 +129,7 @@ export function CustomerDetail({ customerId }: Props) {
       <Card className="bg-gradient-to-b from-[#181c28] to-[#13161f] border-white/[0.06] text-white max-w-5xl">
         <CardHeader>
           <CardTitle className="text-base text-gray-200">
-            주문 이력 ({orders.length}건)
+            📦 주문 이력 ({orders.length}건)
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -99,7 +148,7 @@ export function CustomerDetail({ customerId }: Props) {
                       </span>
                     </div>
                     <div className="text-xs text-gray-500">
-                      {formatDate(o.created_at)} · {o.items.length}품목
+                      {formatDate(o.created_at)} · {o.item_count}품목
                     </div>
                     <div className="text-sm font-semibold text-[#c8962e]">
                       {formatKRW(o.total_amount)}
@@ -116,6 +165,9 @@ export function CustomerDetail({ customerId }: Props) {
           )}
         </CardContent>
       </Card>
+
+      {/* 거래처별 개별 단가 (신규) */}
+      <CustomerPricesEditor customerId={customerId} />
 
       {/* 편집 폼 */}
       <CustomerForm mode="edit" initial={customer} />
