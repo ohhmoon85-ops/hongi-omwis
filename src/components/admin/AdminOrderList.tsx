@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { loadDevOrders, updateDevOrderStatus, type DevOrder } from '@/lib/dev-orders';
 import { fetchOrders, updateOrderStatus } from '@/lib/orders';
 import { fetchInvoiceMap, issueInvoice, type InvoiceInfo } from '@/lib/invoices';
+import { createClient } from '@/lib/supabase/client';
 import { isDevMode } from '@/lib/dev-data';
 import { formatKRW, formatDate, todayISO } from '@/lib/utils';
 import { ORDER_STATUS_BADGE, type OrderStatus } from '@/types';
@@ -47,6 +48,30 @@ export function AdminOrderList() {
     }
   }
   useEffect(() => { refresh(); }, []);
+
+  // 실시간: 거래처 주문 접수/상태변경을 즉시 반영 (운영 모드)
+  useEffect(() => {
+    if (isDevMode) return;
+    const supabase = createClient();
+    const channel = supabase
+      .channel('admin-orders-realtime')
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'orders' },
+        () => {
+          toast('🔔 새 주문이 접수되었습니다', { icon: '🔔' });
+          refresh();
+        },
+      )
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'orders' },
+        () => { refresh(); },
+      )
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   async function issue(o: DevOrder) {
     try {
@@ -230,6 +255,13 @@ function OrderRow({
               <span className="mt-1 inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full bg-green-500/20 text-green-300 border border-green-500/30">
                 <FileText className="w-3 h-3" /> 세금계산서 발행{invoice?.is_mock ? ' (데모)' : ''}
               </span>
+            ) : canIssue ? (
+              <button
+                onClick={(e) => { e.stopPropagation(); onIssue(); }}
+                className="mt-1 inline-flex items-center gap-1 text-[11px] font-semibold px-2.5 py-1 rounded-full bg-[#c8962e] hover:bg-[#b3851f] text-white transition"
+              >
+                <FileText className="w-3 h-3" /> 세금계산서 발행
+              </button>
             ) : !isDevMode && o.status !== 'pending' && o.status !== 'rejected' ? (
               <span className="mt-1 inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full bg-gray-500/20 text-gray-400 border border-gray-500/30">
                 <FileText className="w-3 h-3" /> 미발행
