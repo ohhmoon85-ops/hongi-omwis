@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { CustomerOrderList } from '@/components/customer/OrderList';
 import { Button } from '@/components/ui/button';
+import { LogoutButton } from '@/components/shared/LogoutButton';
 import { FileText } from 'lucide-react';
 
 export default function CustomerOrdersPage() {
@@ -15,7 +16,7 @@ export default function CustomerOrdersPage() {
               상태별로 필터링하거나 과거 주문을 클릭 한 번으로 재주문하세요
             </p>
           </div>
-          <div className="flex gap-2 flex-shrink-0">
+          <div className="flex gap-2 flex-shrink-0 items-center">
             <Link
               href="/customer/documents"
               className="inline-flex items-center gap-1.5 px-3 h-10 rounded-lg bg-white border border-[#1a3d6b]/20 text-[#1a3d6b] hover:bg-[#1a3d6b] hover:text-white transition text-sm whitespace-nowrap"
@@ -28,6 +29,7 @@ export default function CustomerOrdersPage() {
                 + 새 주문
               </Button>
             </Link>
+            <LogoutButton variant="light" showLabel={false} />
           </div>
         </div>
       </header>

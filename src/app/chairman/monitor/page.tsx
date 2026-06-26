@@ -2,13 +2,14 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { ACISCard } from '@/components/shared/ACISCard';
 import { ChairmanCharts } from '@/components/chairman/ChairmanCharts';
 import { MarketsWidget } from '@/components/chairman/MarketsWidget';
+import { LogoutButton } from '@/components/shared/LogoutButton';
 
 // 👑 회장 전용 모니터링 대시보드 — Read-Only
 // ⚠️ 이 화면에는 어떤 편집·생성·삭제 UI 도 두지 말 것
 export default function ChairmanMonitorPage() {
   return (
     <div className="min-h-screen bg-app p-4 sm:p-6 text-white">
-      <header className="mb-6 flex items-center justify-between">
+      <header className="mb-6 flex items-start justify-between gap-3 flex-wrap">
         <div>
           <div className="text-[11px] font-semibold tracking-widest uppercase text-[#c8962e]/80 mb-1">
             👑 회장 모니터링
@@ -18,9 +19,12 @@ export default function ChairmanMonitorPage() {
             전사 현황을 실시간 열람 — 모든 데이터는 Read-Only
           </p>
         </div>
-        <span className="text-xs px-3 py-1 rounded-full bg-[#c8962e]/15 text-[#c8962e] border border-[#c8962e]/30">
-          Read-Only
-        </span>
+        <div className="flex items-center gap-2">
+          <span className="text-xs px-3 py-1 rounded-full bg-[#c8962e]/15 text-[#c8962e] border border-[#c8962e]/30">
+            Read-Only
+          </span>
+          <LogoutButton variant="dark" />
+        </div>
       </header>
 
       {/* KPI / ACIS / 보조 카드 */}

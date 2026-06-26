@@ -8,6 +8,7 @@ import { createClient } from '@/lib/supabase/server';
 import { isDevMode } from '@/lib/env';
 import { formatKRW, formatDate } from '@/lib/utils';
 import { Card, CardContent } from '@/components/ui/card';
+import { LogoutButton } from '@/components/shared/LogoutButton';
 import { Download, AlertCircle } from 'lucide-react';
 
 interface InvoiceRow {
@@ -72,12 +73,15 @@ export default async function CustomerDocumentsPage() {
               발행된 세금계산서를 조회·PDF 저장합니다. 거래처 본인의 문서만 표시됩니다.
             </p>
           </div>
-          <Link
-            href="/customer/orders"
-            className="flex-shrink-0 inline-flex items-center gap-1 px-3 h-10 rounded-lg bg-white border border-[#1a3d6b]/20 text-[#1a3d6b] hover:bg-[#1a3d6b] hover:text-white transition text-sm whitespace-nowrap"
-          >
-            ← 주문 내역
-          </Link>
+          <div className="flex flex-shrink-0 items-center gap-2">
+            <Link
+              href="/customer/orders"
+              className="inline-flex items-center gap-1 px-3 h-10 rounded-lg bg-white border border-[#1a3d6b]/20 text-[#1a3d6b] hover:bg-[#1a3d6b] hover:text-white transition text-sm whitespace-nowrap"
+            >
+              ← 주문 내역
+            </Link>
+            <LogoutButton variant="light" showLabel={false} />
+          </div>
         </div>
       </header>
 

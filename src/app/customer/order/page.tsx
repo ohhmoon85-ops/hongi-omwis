@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { OrderForm } from '@/components/customer/OrderForm';
+import { LogoutButton } from '@/components/shared/LogoutButton';
 import { isDevMode, DEV_PRODUCTS, DEV_CUSTOMER } from '@/lib/dev-data';
 import { formatKRW } from '@/lib/utils';
 import type { Product, Customer } from '@/types';
@@ -53,12 +54,15 @@ export default async function CustomerOrderPage() {
               </div>
             </div>
           </div>
-          <Link
-            href="/customer/orders"
-            className="flex-shrink-0 inline-flex items-center gap-1 px-3 h-10 sm:h-9 rounded-lg bg-white border border-[#1a3d6b]/20 text-[#1a3d6b] hover:bg-[#1a3d6b] hover:text-white transition text-sm whitespace-nowrap"
-          >
-            주문 내역 →
-          </Link>
+          <div className="flex flex-shrink-0 items-center gap-2">
+            <Link
+              href="/customer/orders"
+              className="inline-flex items-center gap-1 px-3 h-10 sm:h-9 rounded-lg bg-white border border-[#1a3d6b]/20 text-[#1a3d6b] hover:bg-[#1a3d6b] hover:text-white transition text-sm whitespace-nowrap"
+            >
+              주문 내역 →
+            </Link>
+            <LogoutButton variant="light" showLabel={false} />
+          </div>
         </div>
       </header>
 
