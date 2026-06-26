@@ -75,10 +75,40 @@
 이용해 주셔서 감사합니다.
 ```
 
+## 6. STOCK_ALERT — 안전재고 미달(관리자)
+- **변수:** `#{product_name}`, `#{current_quantity}`, `#{min_quantity}`, `#{depletes_at}`
+- **버튼:** [웹링크] 재고 관리 → `{APP_URL}/admin/inventory`
+
+```
+[OMWIS] 안전재고 경보
+
+품목: #{product_name}
+현재 재고: #{current_quantity}
+안전재고 기준: #{min_quantity}
+소진 예상일: #{depletes_at}
+
+ACIS 신호와 함께 발주 여부를 검토해 주세요.
+```
+
+## 7. WEEKLY_SUMMARY — 주간 경영 요약(회장)
+- **변수:** `#{period}`, `#{order_count}`, `#{revenue}`, `#{shipping_count}`, `#{receivable}`, `#{low_stock_count}`
+- **버튼:** [웹링크] 경영 모니터링 → `{APP_URL}/chairman/monitor`
+
+```
+[(주)홍지] 주간 경영 요약 (#{period})
+
+신규 주문: #{order_count}건 / 매출 #{revenue}원
+진행 중 배송: #{shipping_count}건
+미수금: #{receivable}원
+재고 경보: #{low_stock_count}건
+
+상세 내역은 모니터링 대시보드에서 확인해 주세요.
+```
+
 ---
 
 ## 등록 절차 체크리스트
-1. 알리고 콘솔 → 알림톡 → 템플릿 등록에서 위 5개를 **코드명(영문 대문자)** 그대로 등록
+1. 알리고 콘솔 → 알림톡 → 템플릿 등록에서 위 7개를 **코드명(영문 대문자)** 그대로 등록
 2. 각 템플릿의 변수 `#{...}` 와 버튼(웹링크 URL)을 동일하게 입력
 3. `{APP_URL}` 은 실제 배포 도메인으로 치환 (예: `https://omwis.hongi.co.kr`)
    - 코드에서는 `NEXT_PUBLIC_APP_URL` 환경변수로 자동 주입됨

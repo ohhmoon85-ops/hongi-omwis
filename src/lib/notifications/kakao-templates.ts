@@ -42,6 +42,22 @@ const adminOrdersButton: KakaoButton = {
   linkPc: `${APP_URL}/admin/orders`,
 };
 
+// 관리자용 "재고 관리" 웹링크 버튼
+const adminInventoryButton: KakaoButton = {
+  name: '재고 관리',
+  linkType: 'WL',
+  linkMo: `${APP_URL}/admin/inventory`,
+  linkPc: `${APP_URL}/admin/inventory`,
+};
+
+// 회장용 "모니터링" 웹링크 버튼
+const chairmanMonitorButton: KakaoButton = {
+  name: '경영 모니터링',
+  linkType: 'WL',
+  linkMo: `${APP_URL}/chairman/monitor`,
+  linkPc: `${APP_URL}/chairman/monitor`,
+};
+
 export const KAKAO_TEMPLATES: Record<string, KakaoTemplate> = {
   ORDER_CREATED: {
     code: 'ORDER_CREATED',
@@ -96,6 +112,30 @@ export const KAKAO_TEMPLATES: Record<string, KakaoTemplate> = {
       '주문하신 상품이 배송 완료되었습니다.\n' +
       '이용해 주셔서 감사합니다.',
     buttons: [ordersButton],
+  },
+  STOCK_ALERT: {
+    code: 'STOCK_ALERT',
+    name: '안전재고 미달(관리자)',
+    text:
+      '[OMWIS] 안전재고 경보\n\n' +
+      '품목: #{product_name}\n' +
+      '현재 재고: #{current_quantity}\n' +
+      '안전재고 기준: #{min_quantity}\n' +
+      '소진 예상일: #{depletes_at}\n\n' +
+      'ACIS 신호와 함께 발주 여부를 검토해 주세요.',
+    buttons: [adminInventoryButton],
+  },
+  WEEKLY_SUMMARY: {
+    code: 'WEEKLY_SUMMARY',
+    name: '주간 경영 요약(회장)',
+    text:
+      '[(주)홍지] 주간 경영 요약 (#{period})\n\n' +
+      '신규 주문: #{order_count}건 / 매출 #{revenue}원\n' +
+      '진행 중 배송: #{shipping_count}건\n' +
+      '미수금: #{receivable}원\n' +
+      '재고 경보: #{low_stock_count}건\n\n' +
+      '상세 내역은 모니터링 대시보드에서 확인해 주세요.',
+    buttons: [chairmanMonitorButton],
   },
 };
 
