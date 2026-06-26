@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { Truck } from 'lucide-react';
 import { loadDevOrders, saveDevOrder, generateDevOrderNumber, type DevOrder } from '@/lib/dev-orders';
 import { fetchOrders, reorder as reorderApi } from '@/lib/orders';
 import { isDevMode } from '@/lib/dev-data';
@@ -162,8 +163,17 @@ export function CustomerOrderList() {
                     </div>
                   )}
 
-                  {/* 재주문 버튼 — 모바일에서 44x44 보장 */}
-                  <div className="mt-3 pt-3 border-t border-gray-100 flex justify-end">
+                  {/* 액션 버튼들 — 배송 추적 + 재주문 */}
+                  <div className="mt-3 pt-3 border-t border-gray-100 flex flex-wrap justify-end gap-2">
+                    {/* 배송 단계인 주문은 배송 추적 노출 */}
+                    {['approved', 'processing', 'ready', 'shipping', 'delivered'].includes(o.status) && (
+                      <Link
+                        href={`/customer/delivery/${o.id}`}
+                        className="inline-flex items-center gap-1.5 px-3 h-10 text-sm text-orange-700 border border-orange-300 rounded-lg hover:bg-orange-500 hover:text-white hover:border-orange-500 transition"
+                      >
+                        <Truck className="w-4 h-4" /> 배송 추적
+                      </Link>
+                    )}
                     <button
                       onClick={() => reorder(o)}
                       className="inline-flex items-center gap-1.5 px-3 h-10 text-sm text-[#1a3d6b] border border-[#1a3d6b]/20 rounded-lg hover:bg-[#1a3d6b] hover:text-white transition"
