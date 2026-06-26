@@ -4,12 +4,13 @@ import type { UserRole } from '@/types';
 import { isSupabaseConfigured } from '@/lib/env';
 
 // 역할별 허용 경로 prefix
+// /account 는 모든 인증 사용자가 접근 가능 (본인 비번 변경)
 const ROLE_ROUTES: Record<UserRole, string[]> = {
-  chairman:    ['/chairman'],
-  super_admin: ['/admin', '/chairman'],
-  admin:       ['/admin'],
-  driver:      ['/admin/deliveries'],
-  customer:    ['/customer'],
+  chairman:    ['/chairman', '/account'],
+  super_admin: ['/admin', '/chairman', '/account'],
+  admin:       ['/admin', '/account'],
+  driver:      ['/admin/deliveries', '/account'],
+  customer:    ['/customer', '/account'],
 };
 
 const ROLE_HOME: Record<UserRole, string> = {
@@ -22,7 +23,11 @@ const ROLE_HOME: Record<UserRole, string> = {
 
 // /api/* 는 각 라우트가 자체적으로 getUser()+역할을 검증하므로 미들웨어 역할
 // 게이트에서 제외한다 (역할 prefix 에 안 걸려 forbidden 되는 것을 방지).
-const PUBLIC_PATHS = ['/login', '/_next', '/favicon.ico', '/api'];
+// /forgot-password /reset-password 는 비로그인 사용자도 접근 가능해야 함.
+const PUBLIC_PATHS = [
+  '/login', '/forgot-password', '/reset-password',
+  '/_next', '/favicon.ico', '/api',
+];
 
 function isPathAllowed(path: string, role: UserRole): boolean {
   if (path === '/') return true;

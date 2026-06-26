@@ -1,3 +1,5 @@
+import Link from 'next/link';
+import { User } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { ACISCard } from '@/components/shared/ACISCard';
 import { ChairmanCharts } from '@/components/chairman/ChairmanCharts';
@@ -23,6 +25,14 @@ export default function ChairmanMonitorPage() {
           <span className="text-xs px-3 py-1 rounded-full bg-[#c8962e]/15 text-[#c8962e] border border-[#c8962e]/30">
             Read-Only
           </span>
+          <Link
+            href="/account"
+            className="inline-flex items-center gap-1.5 px-3 h-9 rounded-lg text-sm text-gray-400 hover:text-white hover:bg-white/[0.05] border border-white/[0.06] transition"
+            title="내 계정"
+          >
+            <User className="w-4 h-4" />
+            내 계정
+          </Link>
           <LogoutButton variant="dark" />
         </div>
       </header>

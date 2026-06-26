@@ -133,6 +133,15 @@ function LoginForm() {
         >
           {loading ? '로그인 중...' : '로그인'}
         </Button>
+
+        <div className="text-center pt-1">
+          <a
+            href="/forgot-password"
+            className="text-xs text-gray-500 hover:text-[#c8962e] underline-offset-2 hover:underline"
+          >
+            비밀번호를 잊으셨나요?
+          </a>
+        </div>
       </form>
 
       {isDevMode && (

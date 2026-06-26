@@ -5,7 +5,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { ROLE_LABEL, type UserRole } from '@/types';
 import {
-  LayoutDashboard, ClipboardList, Building2, Package, Truck, Bot, Bell, LogOut,
+  LayoutDashboard, ClipboardList, Building2, Package, Truck, Bot, Bell, User, Users, LogOut,
 } from 'lucide-react';
 
 interface NavItem {
@@ -22,6 +22,7 @@ const NAV: NavItem[] = [
   { href: '/admin/inventory',  label: '재고',     icon: Package,        roles: ['super_admin', 'admin'] },
   { href: '/admin/deliveries',   label: '배송',     icon: Truck,          roles: ['super_admin', 'admin', 'driver'] },
   { href: '/admin/notifications',label: '알림 이력', icon: Bell,           roles: ['super_admin', 'admin'] },
+  { href: '/admin/users',        label: '사용자',   icon: Users,          roles: ['super_admin'] },
   { href: '/admin/acis',         label: 'ACIS',     icon: Bot,            roles: ['super_admin'] },
 ];
 
@@ -72,13 +73,22 @@ export function AdminNav({ role }: { role: UserRole | null }) {
           })}
         </nav>
 
-        {/* 우측: 역할 + 로그아웃 */}
+        {/* 우측: 역할 + 내 계정 + 로그아웃 */}
         <div className="ml-auto flex items-center gap-2 shrink-0">
           {role && (
             <span className="hidden sm:inline text-[11px] px-2 py-1 rounded-full bg-white/[0.05] text-gray-300 border border-white/[0.06]">
               {ROLE_LABEL[role]}
             </span>
           )}
+          <Link
+            href="/account"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm text-gray-400 hover:text-white hover:bg-white/[0.05] transition-colors"
+            aria-label="내 계정"
+            title="내 계정"
+          >
+            <User className="w-4 h-4" />
+            <span className="hidden lg:inline">내 계정</span>
+          </Link>
           <button
             onClick={logout}
             className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm text-gray-400 hover:text-white hover:bg-white/[0.05] transition-colors"
