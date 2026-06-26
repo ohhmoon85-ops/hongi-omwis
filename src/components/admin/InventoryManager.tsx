@@ -3,10 +3,11 @@
 import { useEffect, useState } from 'react';
 import {
   fetchProducts, fetchInventory, fetchSafetyMap, fetchInventoryLogs,
-  buildStockSummary, addInbound, adjustLot, setSafetyStock,
+  fetchOutboundRateMap, buildStockSummary, addInbound, adjustLot, setSafetyStock,
   type InventoryLot, type StockSummary, type InventoryLog,
 } from '@/lib/inventory';
-import { isDevMode } from '@/lib/dev-data';
+import { syncInventoryToACIS } from '@/lib/acis';
+import { isDevMode } from '@/lib/env';
 import { formatNumber, formatDate, todayISO } from '@/lib/utils';
 import type { Product } from '@/types';
 import { Button } from '@/components/ui/button';
@@ -25,13 +26,29 @@ export function InventoryManager() {
   async function refresh() {
     if (isDevMode) { setLoaded(true); return; }
     try {
-      const [prods, inv, safety, lg] = await Promise.all([
+      const [prods, inv, safety, lg, outRate] = await Promise.all([
         fetchProducts(), fetchInventory(), fetchSafetyMap(), fetchInventoryLogs(),
+        fetchOutboundRateMap(30),
       ]);
       setProducts(prods);
       setLots(inv);
-      setSummary(buildStockSummary(prods, inv, safety));
+      const built = buildStockSummary(prods, inv, safety, outRate);
+      setSummary(built);
       setLogs(lg);
+
+      // ACIS 자동 sync — 가장 부족한 품목의 Weeks on Hand 기준
+      // (출고 데이터가 있는 품목 중 최소값)
+      const meaningful = built.filter((s) => s.weeksOnHand != null);
+      if (meaningful.length > 0) {
+        const min = meaningful.reduce((a, b) =>
+          (a.weeksOnHand! < b.weeksOnHand!) ? a : b,
+        );
+        await syncInventoryToACIS({
+          weeks_on_hand: min.weeksOnHand!,
+          threshold: 6,
+          should_hold: min.shouldHold,
+        });
+      }
     } catch (err) {
       toast.error(err instanceof Error ? err.message : '재고 조회 실패');
     } finally {
@@ -156,6 +173,15 @@ function StockCard({ summary: s, onSaved }: { summary: StockSummary; onSaved: ()
     }
   }
 
+  // 소진 예측 시각화
+  // 임계치: 2주 미만 위험(적색), 2-6주 주의(황색), 6주 이상 안전(녹색)
+  const woh = s.weeksOnHand;
+  const wohBand =
+    woh == null ? null
+    : woh < 2  ? { color: 'text-red-400',    label: '⚠ 위험', desc: '곧 소진' }
+    : woh < 6  ? { color: 'text-yellow-400', label: '주의',   desc: '발주 검토' }
+    :            { color: 'text-green-400',  label: '안전',   desc: '재고 충분 (ACIS HOLD)' };
+
   return (
     <Card className={`bg-[#171b26] ${s.isLow ? 'border-red-500/40' : 'border-[#1f2433]'} text-white`}>
       <CardHeader className="pb-2">
@@ -169,6 +195,33 @@ function StockCard({ summary: s, onSaved }: { summary: StockSummary; onSaved: ()
           {formatNumber(s.total)}<span className="text-base text-gray-500 ml-1">{s.unit}</span>
         </div>
         <div className="text-xs text-gray-500 mt-1">활성 lot {s.lotCount}개</div>
+
+        {/* 소진 예측 (Weeks on Hand) */}
+        {wohBand ? (
+          <div className="mt-3 pt-3 border-t border-[#1f2433] space-y-1">
+            <div className="flex items-baseline justify-between">
+              <span className="text-[11px] text-gray-400">소진 예측</span>
+              <span className={`text-xs font-semibold ${wohBand.color}`}>{wohBand.label}</span>
+            </div>
+            <div className="flex items-baseline justify-between">
+              <span className={`text-lg font-bold ${wohBand.color}`}>
+                약 {formatNumber(woh!, 1)}주
+              </span>
+              <span className="text-[10px] text-gray-500">
+                {s.depletesAt && formatDate(s.depletesAt)} 소진 예상
+              </span>
+            </div>
+            <div className="text-[10px] text-gray-500">
+              일평균 출고 {formatNumber(s.dailyAvgOut, 1)}{s.unit} · {wohBand.desc}
+            </div>
+          </div>
+        ) : (
+          <div className="mt-3 pt-3 border-t border-[#1f2433]">
+            <div className="text-[10px] text-gray-500">
+              소진 예측: 최근 30일 출고 데이터 부족
+            </div>
+          </div>
+        )}
 
         <div className="mt-3 pt-3 border-t border-[#1f2433]">
           {editing ? (

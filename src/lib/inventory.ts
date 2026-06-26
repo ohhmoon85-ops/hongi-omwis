@@ -28,6 +28,11 @@ export interface StockSummary {
   minQuantity: number | null;
   isLow: boolean;
   lotCount: number;
+  // ─── 재고 소진 예측 (Phase 3 보강) ─────────────────────────────
+  dailyAvgOut: number;         // 최근 30일 일평균 출고량
+  weeksOnHand: number | null;  // total / (dailyAvgOut * 7) — 출고 데이터 없으면 null
+  depletesAt: string | null;   // ISO date — 현재 소진 속도로 재고 0 도달 예상일
+  shouldHold: boolean;         // ACIS 신호용 — weeksOnHand >= 6 (충분)
 }
 
 export interface InventoryLog {
@@ -99,16 +104,52 @@ export async function fetchInventoryLogs(limit = 20): Promise<InventoryLog[]> {
   }));
 }
 
-// 품목별 재고 요약 — 활성 lot 합계 vs 안전재고
+// 최근 N 일 출고량 — 품목별 합계 (양수, 출고 = log_type='out')
+export async function fetchOutboundRateMap(days = 30): Promise<Map<string, number>> {
+  const supabase = createClient();
+  const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
+  const { data, error } = await supabase
+    .from('inventory_logs')
+    .select('product_id, quantity')
+    .eq('log_type', 'out')
+    .gte('created_at', since);
+  if (error) throw new Error(error.message);
+
+  const map = new Map<string, number>();
+  for (const r of data ?? []) {
+    const qty = Math.abs(Number(r.quantity));
+    map.set(r.product_id, (map.get(r.product_id) ?? 0) + qty);
+  }
+  // 합계 → 일평균
+  for (const [pid, total] of map) map.set(pid, total / days);
+  return map;
+}
+
+// 품목별 재고 요약 — 활성 lot 합계 vs 안전재고 + 소진 예측
+// HOLD 임계치: 6주 — ACIS 가 BUY 신호 떠도 이만큼 재고면 HOLD 권장
+const HOLD_THRESHOLD_WEEKS = 6;
+
 export function buildStockSummary(
   products: Product[],
   lots: InventoryLot[],
   safetyMap: Map<string, number>,
+  outboundRateMap?: Map<string, number>,  // 일평균 출고량 (선택)
 ): StockSummary[] {
   return products.map((p) => {
     const productLots = lots.filter((l) => l.product_id === p.id && l.status === 'active');
     const total = productLots.reduce((s, l) => s + l.quantity, 0);
     const minQuantity = safetyMap.get(p.id) ?? null;
+    const dailyAvgOut = outboundRateMap?.get(p.id) ?? 0;
+
+    // 소진 예측: 일평균 출고가 있어야 의미 있음
+    let weeksOnHand: number | null = null;
+    let depletesAt: string | null = null;
+    if (dailyAvgOut > 0 && total > 0) {
+      const daysLeft = total / dailyAvgOut;
+      weeksOnHand = daysLeft / 7;
+      depletesAt = new Date(Date.now() + daysLeft * 86400000).toISOString();
+    }
+
     return {
       product_id: p.id,
       product_name: p.name,
@@ -117,6 +158,10 @@ export function buildStockSummary(
       minQuantity,
       isLow: minQuantity != null && total < minQuantity,
       lotCount: productLots.length,
+      dailyAvgOut,
+      weeksOnHand,
+      depletesAt,
+      shouldHold: weeksOnHand != null && weeksOnHand >= HOLD_THRESHOLD_WEEKS,
     };
   });
 }
