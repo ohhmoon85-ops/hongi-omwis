@@ -4,6 +4,7 @@
 
 import { sendKakaoAlimtalk } from './kakao';
 import { sendEmail } from './email';
+import { KAKAO_TEMPLATES, renderTemplate, missingVariables } from './kakao-templates';
 
 export type NotificationEvent =
   | 'order_created'      // 거래처 주문 접수 → 관리자
@@ -24,7 +25,7 @@ export interface DispatchParams {
 
 interface EventConfig {
   channel: 'kakao' | 'email' | 'both';
-  templateCode?: string;
+  templateCode?: string; // 알림톡 문구는 KAKAO_TEMPLATES[templateCode] 가 단일 소스
   subject?: (v: Record<string, string | number>) => string;
   body?: (v: Record<string, string | number>) => string;
 }
@@ -97,11 +98,23 @@ export async function dispatchNotification(params: DispatchParams) {
   const tasks: Promise<unknown>[] = [];
 
   if ((cfg.channel === 'kakao' || cfg.channel === 'both') && params.to.phone && cfg.templateCode) {
-    tasks.push(sendKakaoAlimtalk({
-      to: params.to.phone,
-      templateCode: cfg.templateCode,
-      variables: params.variables,
-    }));
+    const tpl = KAKAO_TEMPLATES[cfg.templateCode];
+    if (!tpl) {
+      console.warn('[NOTIFY] 알림톡 템플릿 미정의:', cfg.templateCode);
+    } else {
+      const missing = missingVariables(tpl, params.variables);
+      if (missing.length) {
+        console.warn(`[NOTIFY] ${tpl.code} 변수 누락 → 발송 생략:`, missing);
+      } else {
+        tasks.push(sendKakaoAlimtalk({
+          to: params.to.phone,
+          templateCode: tpl.code,
+          message: renderTemplate(tpl, params.variables),
+          buttons: tpl.buttons,
+          variables: params.variables,
+        }));
+      }
+    }
   }
 
   if ((cfg.channel === 'email' || cfg.channel === 'both') && params.to.email && cfg.subject && cfg.body) {

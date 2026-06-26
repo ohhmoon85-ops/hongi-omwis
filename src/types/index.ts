@@ -44,6 +44,11 @@ export interface Customer {
   is_active: boolean;
   former_dealer: string | null;
   transferred_at: string | null;
+  business_number?: string | null;  // 사업자등록번호 (세금계산서용)
+  ceo_name?: string | null;         // 대표자
+  biz_type?: string | null;         // 업태
+  biz_item?: string | null;         // 종목
+  tax_email?: string | null;        // 세금계산서 수신 이메일
   memo: string | null;
   created_at: string;
   updated_at: string;
@@ -72,6 +77,25 @@ export interface Order {
   paid_amount: number;
   memo: string | null;
   rejection_reason: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export type InvoiceStatus = 'draft' | 'issued' | 'sent' | 'failed' | 'cancelled';
+
+export interface Invoice {
+  id: string;
+  order_id: string;
+  customer_id: string;
+  mgt_key: string;
+  nts_confirm_number: string | null;
+  supply_amount: number;
+  tax_amount: number;
+  total_amount: number;
+  status: InvoiceStatus;
+  issue_date: string | null;
+  is_mock: boolean;
+  pdf_url: string | null;
   created_at: string;
   updated_at: string;
 }

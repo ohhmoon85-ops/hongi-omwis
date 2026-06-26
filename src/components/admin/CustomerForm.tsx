@@ -218,6 +218,60 @@ export function CustomerForm({ initial, mode }: Props) {
 
         <Card className="bg-[#171b26] border-[#1f2433]">
           <CardHeader>
+            <CardTitle className="text-base text-gray-200">
+              사업자 정보 (세금계산서 발행용)
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <Row>
+              <Field label="사업자등록번호">
+                <Input
+                  value={form.business_number ?? ''}
+                  onChange={(e) => set('business_number', e.target.value || null)}
+                  className="bg-[#0f1117] border-[#2a2f3e] text-white"
+                  placeholder="123-45-67890"
+                />
+              </Field>
+              <Field label="대표자">
+                <Input
+                  value={form.ceo_name ?? ''}
+                  onChange={(e) => set('ceo_name', e.target.value || null)}
+                  className="bg-[#0f1117] border-[#2a2f3e] text-white"
+                />
+              </Field>
+            </Row>
+            <Row>
+              <Field label="업태">
+                <Input
+                  value={form.biz_type ?? ''}
+                  onChange={(e) => set('biz_type', e.target.value || null)}
+                  className="bg-[#0f1117] border-[#2a2f3e] text-white"
+                  placeholder="제조"
+                />
+              </Field>
+              <Field label="종목">
+                <Input
+                  value={form.biz_item ?? ''}
+                  onChange={(e) => set('biz_item', e.target.value || null)}
+                  className="bg-[#0f1117] border-[#2a2f3e] text-white"
+                  placeholder="전자부품"
+                />
+              </Field>
+            </Row>
+            <Field label="세금계산서 수신 이메일 (미입력 시 위 이메일 사용)">
+              <Input
+                type="email"
+                value={form.tax_email ?? ''}
+                onChange={(e) => set('tax_email', e.target.value || null)}
+                className="bg-[#0f1117] border-[#2a2f3e] text-white"
+                placeholder="tax@company.com"
+              />
+            </Field>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-[#171b26] border-[#1f2433]">
+          <CardHeader>
             <CardTitle className="text-base text-gray-200">메모 (선택)</CardTitle>
           </CardHeader>
           <CardContent>

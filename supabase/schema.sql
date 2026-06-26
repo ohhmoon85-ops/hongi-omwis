@@ -28,6 +28,11 @@ CREATE TABLE IF NOT EXISTS customers (
   is_active BOOLEAN DEFAULT true,
   former_dealer VARCHAR(50),         -- 기존 소속 대리점명 (이관 이력 추적용)
   transferred_at TIMESTAMPTZ,        -- 본사 직거래 전환일
+  business_number VARCHAR(12),       -- 사업자등록번호 (세금계산서용)
+  ceo_name VARCHAR(50),              -- 대표자
+  biz_type VARCHAR(100),             -- 업태
+  biz_item VARCHAR(100),             -- 종목
+  tax_email VARCHAR(100),            -- 세금계산서 수신 이메일
   memo TEXT,
   created_at TIMESTAMPTZ DEFAULT now(),
   updated_at TIMESTAMPTZ DEFAULT now()
@@ -160,6 +165,26 @@ CREATE TABLE IF NOT EXISTS safety_stock (
   created_at TIMESTAMPTZ DEFAULT now()
 );
 
+-- ⑫ 전자세금계산서 (주문당 1건 정발행, 부가세 별도)
+CREATE TABLE IF NOT EXISTS invoices (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  order_id UUID REFERENCES orders(id) ON DELETE CASCADE UNIQUE,
+  customer_id UUID REFERENCES customers(id),
+  mgt_key VARCHAR(40) NOT NULL,             -- 발행 관리번호 (팝빌 mgtKey)
+  nts_confirm_number VARCHAR(40),           -- 국세청 승인번호
+  supply_amount INTEGER NOT NULL,           -- 공급가액
+  tax_amount INTEGER NOT NULL,              -- 세액(부가세 10%)
+  total_amount INTEGER NOT NULL,            -- 합계 (공급가액 + 세액)
+  status VARCHAR(20) DEFAULT 'issued'
+    CHECK (status IN ('draft','issued','sent','failed','cancelled')),
+  issue_date DATE DEFAULT CURRENT_DATE,     -- 작성일자
+  is_mock BOOLEAN DEFAULT true,
+  pdf_url TEXT,
+  memo TEXT,
+  created_at TIMESTAMPTZ DEFAULT now(),
+  updated_at TIMESTAMPTZ DEFAULT now()
+);
+
 -- ============================================================================
 -- 주문번호 자동 생성 함수
 -- ============================================================================
@@ -191,23 +216,29 @@ ALTER TABLE inventory_logs  ENABLE ROW LEVEL SECURITY;
 ALTER TABLE deliveries      ENABLE ROW LEVEL SECURITY;
 ALTER TABLE notifications   ENABLE ROW LEVEL SECURITY;
 ALTER TABLE safety_stock    ENABLE ROW LEVEL SECURITY;
+ALTER TABLE invoices        ENABLE ROW LEVEL SECURITY;
 ALTER TABLE user_profiles   ENABLE ROW LEVEL SECURITY;
 
+-- ─────────────────────────────────────────────────────────────────────────────
+-- 헬퍼 함수 (정책보다 먼저 정의)
+-- ⚠️ SECURITY DEFINER 필수 — user_profiles 의 RLS 를 우회해야 정책 안에서
+--    user_profiles 를 다시 조회할 때 무한 재귀(42P17)가 발생하지 않음
+-- ─────────────────────────────────────────────────────────────────────────────
+CREATE OR REPLACE FUNCTION current_role_v() RETURNS TEXT AS $$
+  SELECT role FROM user_profiles WHERE id = auth.uid();
+$$ LANGUAGE SQL STABLE SECURITY DEFINER;
+
+CREATE OR REPLACE FUNCTION current_customer_id() RETURNS UUID AS $$
+  SELECT customer_id FROM user_profiles WHERE id = auth.uid();
+$$ LANGUAGE SQL STABLE SECURITY DEFINER;
+
 -- user_profiles: 본인 SELECT, 슈퍼관리자 전체
+-- super_admin 판정은 SECURITY DEFINER 함수로 — 정책 안에서 user_profiles 를
+-- 직접 서브쿼리하면 재귀하므로 절대 금지
 CREATE POLICY "self_read_profile" ON user_profiles FOR SELECT
   USING (id = auth.uid());
 CREATE POLICY "super_admin_all_profiles" ON user_profiles FOR ALL
-  USING ((SELECT role FROM user_profiles WHERE id = auth.uid()) = 'super_admin');
-
--- 헬퍼: 현재 사용자의 role 조회
-CREATE OR REPLACE FUNCTION current_role_v() RETURNS TEXT AS $$
-  SELECT role FROM user_profiles WHERE id = auth.uid();
-$$ LANGUAGE SQL STABLE;
-
--- 헬퍼: 현재 사용자의 customer_id 조회
-CREATE OR REPLACE FUNCTION current_customer_id() RETURNS UUID AS $$
-  SELECT customer_id FROM user_profiles WHERE id = auth.uid();
-$$ LANGUAGE SQL STABLE;
+  USING (current_role_v() = 'super_admin');
 
 -- ─────────────────────────────────────────────────────────────────────────────
 -- super_admin / admin: 전체 권한
@@ -222,6 +253,7 @@ CREATE POLICY "admin_all_invlogs"    ON inventory_logs  FOR ALL USING (current_r
 CREATE POLICY "admin_all_deliveries" ON deliveries      FOR ALL USING (current_role_v() IN ('super_admin','admin'));
 CREATE POLICY "admin_all_notify"     ON notifications   FOR ALL USING (current_role_v() IN ('super_admin','admin'));
 CREATE POLICY "admin_all_safety"     ON safety_stock    FOR ALL USING (current_role_v() IN ('super_admin','admin'));
+CREATE POLICY "admin_all_invoices"   ON invoices        FOR ALL USING (current_role_v() IN ('super_admin','admin'));
 
 -- ─────────────────────────────────────────────────────────────────────────────
 -- chairman: 전체 SELECT 만 (Read-Only) — INSERT/UPDATE/DELETE 정책 없음
@@ -233,6 +265,7 @@ CREATE POLICY "chair_read_oitems"     ON order_items     FOR SELECT USING (curre
 CREATE POLICY "chair_read_inventory"  ON inventory       FOR SELECT USING (current_role_v() = 'chairman');
 CREATE POLICY "chair_read_invlogs"    ON inventory_logs  FOR SELECT USING (current_role_v() = 'chairman');
 CREATE POLICY "chair_read_deliveries" ON deliveries      FOR SELECT USING (current_role_v() = 'chairman');
+CREATE POLICY "chair_read_invoices"   ON invoices        FOR SELECT USING (current_role_v() = 'chairman');
 
 -- ─────────────────────────────────────────────────────────────────────────────
 -- driver: 배송 본인 건 SELECT/UPDATE
@@ -266,6 +299,10 @@ CREATE POLICY "cust_read_products" ON products FOR SELECT
 
 -- 거래처는 자사 단가만 조회
 CREATE POLICY "cust_read_own_prices" ON customer_prices FOR SELECT
+  USING (current_role_v() = 'customer' AND customer_id = current_customer_id());
+
+-- 거래처는 자사 세금계산서만 조회
+CREATE POLICY "cust_read_own_invoices" ON invoices FOR SELECT
   USING (current_role_v() = 'customer' AND customer_id = current_customer_id());
 
 -- ============================================================================

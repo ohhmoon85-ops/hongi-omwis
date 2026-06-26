@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { loadDevOrders, saveDevOrder, generateDevOrderNumber, type DevOrder } from '@/lib/dev-orders';
+import { fetchOrders, reorder as reorderApi } from '@/lib/orders';
 import { isDevMode } from '@/lib/dev-data';
 import { formatKRW, formatDate } from '@/lib/utils';
 import { ORDER_STATUS_BADGE, type OrderStatus } from '@/types';
@@ -26,32 +27,41 @@ export function CustomerOrderList() {
   const [filter, setFilter] = useState<OrderStatus | 'all'>('all');
   const [loaded, setLoaded] = useState(false);
 
-  function refresh() {
-    if (isDevMode) {
-      setOrders(loadDevOrders());
-      setLoaded(true);
-    } else {
-      // TODO: fetch /api/orders
+  async function refresh() {
+    try {
+      setOrders(isDevMode ? loadDevOrders() : await fetchOrders());
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : '주문 조회 실패');
+    } finally {
       setLoaded(true);
     }
   }
 
-  useEffect(refresh, []);
+  useEffect(() => { refresh(); }, []);
 
-  function reorder(o: DevOrder) {
-    const orderNumber = generateDevOrderNumber();
-    saveDevOrder({
-      ...o,
-      id: crypto.randomUUID(),
-      order_number: orderNumber,
-      status: 'pending',
-      confirmed_date: null,
-      rejection_reason: null,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    });
-    toast.success(`주문 ${orderNumber} 으로 재주문되었습니다`);
-    refresh();
+  async function reorder(o: DevOrder) {
+    try {
+      if (isDevMode) {
+        const orderNumber = generateDevOrderNumber();
+        saveDevOrder({
+          ...o,
+          id: crypto.randomUUID(),
+          order_number: orderNumber,
+          status: 'pending',
+          confirmed_date: null,
+          rejection_reason: null,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        });
+        toast.success(`주문 ${orderNumber} 으로 재주문되었습니다`);
+      } else {
+        const orderNumber = await reorderApi(o);
+        toast.success(`주문 ${orderNumber} 으로 재주문되었습니다`);
+      }
+      await refresh();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : '재주문 실패');
+    }
   }
 
   const filtered = filter === 'all' ? orders : orders.filter((o) => o.status === filter);

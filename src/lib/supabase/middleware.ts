@@ -19,7 +19,9 @@ const ROLE_HOME: Record<UserRole, string> = {
   customer:    '/customer/order',
 };
 
-const PUBLIC_PATHS = ['/login', '/_next', '/favicon.ico', '/api/health'];
+// /api/* 는 각 라우트가 자체적으로 getUser()+역할을 검증하므로 미들웨어 역할
+// 게이트에서 제외한다 (역할 prefix 에 안 걸려 forbidden 되는 것을 방지).
+const PUBLIC_PATHS = ['/login', '/_next', '/favicon.ico', '/api'];
 
 function isPathAllowed(path: string, role: UserRole): boolean {
   if (path === '/') return true;
