@@ -235,69 +235,98 @@ $$ LANGUAGE SQL STABLE SECURITY DEFINER;
 -- user_profiles: 본인 SELECT, 슈퍼관리자 전체
 -- super_admin 판정은 SECURITY DEFINER 함수로 — 정책 안에서 user_profiles 를
 -- 직접 서브쿼리하면 재귀하므로 절대 금지
+DROP POLICY IF EXISTS "self_read_profile" ON user_profiles;
 CREATE POLICY "self_read_profile" ON user_profiles FOR SELECT
   USING (id = auth.uid());
+DROP POLICY IF EXISTS "super_admin_all_profiles" ON user_profiles;
 CREATE POLICY "super_admin_all_profiles" ON user_profiles FOR ALL
   USING (current_role_v() = 'super_admin');
 
 -- ─────────────────────────────────────────────────────────────────────────────
 -- super_admin / admin: 전체 권한
 -- ─────────────────────────────────────────────────────────────────────────────
+DROP POLICY IF EXISTS "admin_all_customers"  ON customers;
 CREATE POLICY "admin_all_customers"  ON customers       FOR ALL USING (current_role_v() IN ('super_admin','admin'));
+DROP POLICY IF EXISTS "admin_all_products"   ON products;
 CREATE POLICY "admin_all_products"   ON products        FOR ALL USING (current_role_v() IN ('super_admin','admin'));
+DROP POLICY IF EXISTS "admin_all_cprices"    ON customer_prices;
 CREATE POLICY "admin_all_cprices"    ON customer_prices FOR ALL USING (current_role_v() IN ('super_admin','admin'));
+DROP POLICY IF EXISTS "admin_all_orders"     ON orders;
 CREATE POLICY "admin_all_orders"     ON orders          FOR ALL USING (current_role_v() IN ('super_admin','admin'));
+DROP POLICY IF EXISTS "admin_all_oitems"     ON order_items;
 CREATE POLICY "admin_all_oitems"     ON order_items     FOR ALL USING (current_role_v() IN ('super_admin','admin'));
+DROP POLICY IF EXISTS "admin_all_inventory"  ON inventory;
 CREATE POLICY "admin_all_inventory"  ON inventory       FOR ALL USING (current_role_v() IN ('super_admin','admin'));
+DROP POLICY IF EXISTS "admin_all_invlogs"    ON inventory_logs;
 CREATE POLICY "admin_all_invlogs"    ON inventory_logs  FOR ALL USING (current_role_v() IN ('super_admin','admin'));
+DROP POLICY IF EXISTS "admin_all_deliveries" ON deliveries;
 CREATE POLICY "admin_all_deliveries" ON deliveries      FOR ALL USING (current_role_v() IN ('super_admin','admin'));
+DROP POLICY IF EXISTS "admin_all_notify"     ON notifications;
 CREATE POLICY "admin_all_notify"     ON notifications   FOR ALL USING (current_role_v() IN ('super_admin','admin'));
+DROP POLICY IF EXISTS "admin_all_safety"     ON safety_stock;
 CREATE POLICY "admin_all_safety"     ON safety_stock    FOR ALL USING (current_role_v() IN ('super_admin','admin'));
 CREATE POLICY "admin_all_invoices"   ON invoices        FOR ALL USING (current_role_v() IN ('super_admin','admin'));
 
 -- ─────────────────────────────────────────────────────────────────────────────
 -- chairman: 전체 SELECT 만 (Read-Only) — INSERT/UPDATE/DELETE 정책 없음
 -- ─────────────────────────────────────────────────────────────────────────────
+DROP POLICY IF EXISTS "chair_read_customers"  ON customers;
 CREATE POLICY "chair_read_customers"  ON customers       FOR SELECT USING (current_role_v() = 'chairman');
+DROP POLICY IF EXISTS "chair_read_products"   ON products;
 CREATE POLICY "chair_read_products"   ON products        FOR SELECT USING (current_role_v() = 'chairman');
+DROP POLICY IF EXISTS "chair_read_orders"     ON orders;
 CREATE POLICY "chair_read_orders"     ON orders          FOR SELECT USING (current_role_v() = 'chairman');
+DROP POLICY IF EXISTS "chair_read_oitems"     ON order_items;
 CREATE POLICY "chair_read_oitems"     ON order_items     FOR SELECT USING (current_role_v() = 'chairman');
+DROP POLICY IF EXISTS "chair_read_inventory"  ON inventory;
 CREATE POLICY "chair_read_inventory"  ON inventory       FOR SELECT USING (current_role_v() = 'chairman');
+DROP POLICY IF EXISTS "chair_read_invlogs"    ON inventory_logs;
 CREATE POLICY "chair_read_invlogs"    ON inventory_logs  FOR SELECT USING (current_role_v() = 'chairman');
+DROP POLICY IF EXISTS "chair_read_deliveries" ON deliveries;
 CREATE POLICY "chair_read_deliveries" ON deliveries      FOR SELECT USING (current_role_v() = 'chairman');
 CREATE POLICY "chair_read_invoices"   ON invoices        FOR SELECT USING (current_role_v() = 'chairman');
 
 -- ─────────────────────────────────────────────────────────────────────────────
 -- driver: 배송 본인 건 SELECT/UPDATE
 -- ─────────────────────────────────────────────────────────────────────────────
+DROP POLICY IF EXISTS "driver_read_deliveries" ON deliveries;
 CREATE POLICY "driver_read_deliveries" ON deliveries FOR SELECT USING (current_role_v() = 'driver');
+DROP POLICY IF EXISTS "driver_update_deliveries" ON deliveries;
 CREATE POLICY "driver_update_deliveries" ON deliveries FOR UPDATE USING (current_role_v() = 'driver');
+DROP POLICY IF EXISTS "driver_read_orders" ON orders;
 CREATE POLICY "driver_read_orders" ON orders FOR SELECT USING (current_role_v() = 'driver');
 
 -- ─────────────────────────────────────────────────────────────────────────────
 -- customer: 자사 데이터만
 -- ─────────────────────────────────────────────────────────────────────────────
+DROP POLICY IF EXISTS "cust_read_own_orders" ON orders;
 CREATE POLICY "cust_read_own_orders" ON orders FOR SELECT
   USING (current_role_v() = 'customer' AND customer_id = current_customer_id());
+DROP POLICY IF EXISTS "cust_create_orders" ON orders;
 CREATE POLICY "cust_create_orders" ON orders FOR INSERT
   WITH CHECK (current_role_v() = 'customer' AND customer_id = current_customer_id());
 
+DROP POLICY IF EXISTS "cust_read_own_oitems" ON order_items;
 CREATE POLICY "cust_read_own_oitems" ON order_items FOR SELECT
   USING (current_role_v() = 'customer'
          AND order_id IN (SELECT id FROM orders WHERE customer_id = current_customer_id()));
+DROP POLICY IF EXISTS "cust_create_oitems" ON order_items;
 CREATE POLICY "cust_create_oitems" ON order_items FOR INSERT
   WITH CHECK (current_role_v() = 'customer'
               AND order_id IN (SELECT id FROM orders WHERE customer_id = current_customer_id()));
 
+DROP POLICY IF EXISTS "cust_read_own_deliveries" ON deliveries;
 CREATE POLICY "cust_read_own_deliveries" ON deliveries FOR SELECT
   USING (current_role_v() = 'customer'
          AND order_id IN (SELECT id FROM orders WHERE customer_id = current_customer_id()));
 
 -- 거래처는 품목 마스터를 조회 가능 (주문 화면에서 필요)
+DROP POLICY IF EXISTS "cust_read_products" ON products;
 CREATE POLICY "cust_read_products" ON products FOR SELECT
   USING (current_role_v() = 'customer' AND is_active = true);
 
 -- 거래처는 자사 단가만 조회
+DROP POLICY IF EXISTS "cust_read_own_prices" ON customer_prices;
 CREATE POLICY "cust_read_own_prices" ON customer_prices FOR SELECT
   USING (current_role_v() = 'customer' AND customer_id = current_customer_id());
 
