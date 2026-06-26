@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { loadDevOrders, updateDevOrderStatus, type DevOrder } from '@/lib/dev-orders';
 import { fetchOrders, updateOrderStatus, dispatchOrderManually, fetchDispatchedOrderIds } from '@/lib/orders';
 import { fetchInvoiceMap, issueInvoice, type InvoiceInfo } from '@/lib/invoices';
@@ -287,9 +288,21 @@ function OrderRow({
               {formatKRW(o.total_amount)}
             </div>
             {hasInvoice ? (
-              <span className="mt-1 inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full bg-green-500/20 text-green-300 border border-green-500/30">
-                <FileText className="w-3 h-3" /> 세금계산서 발행{invoice?.is_mock ? ' (데모)' : ''}
-              </span>
+              <div className="mt-1 inline-flex items-center gap-1.5">
+                <span className="inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full bg-green-500/20 text-green-300 border border-green-500/30">
+                  <FileText className="w-3 h-3" /> 세금계산서 발행{invoice?.is_mock ? ' (데모)' : ''}
+                </span>
+                <Link
+                  href={`/admin/invoices/${invoice!.id}`}
+                  onClick={(e) => e.stopPropagation()}
+                  className="text-[11px] text-blue-300 hover:text-blue-200 underline-offset-2 hover:underline"
+                  title="새 탭에서 PDF 인쇄"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  📄 PDF
+                </Link>
+              </div>
             ) : canIssue ? (
               <button
                 onClick={(e) => { e.stopPropagation(); onIssue(); }}
