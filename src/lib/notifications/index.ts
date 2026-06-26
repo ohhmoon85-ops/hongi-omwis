@@ -84,7 +84,8 @@ const EVENT_CONFIG: Record<NotificationEvent, EventConfig> = {
     channel: 'both',
     templateCode: 'WEEKLY_SUMMARY',
     subject: (v) => `[(주)홍지] 주간 경영 요약 (${v.period})`,
-    body: (v) => `<p>${v.summary_html}</p>`,
+    // summary_html 은 cron 라우트에서 완성된 HTML 문서를 전달 — 추가 래핑 불필요
+    body: (v) => String(v.summary_html ?? ''),
   },
 };
 
