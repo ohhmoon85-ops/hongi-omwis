@@ -201,6 +201,63 @@ END;
 $$ LANGUAGE plpgsql;
 
 -- ============================================================================
+-- 주문 출고 처리 (FIFO lot 차감 + inventory_logs(out) 생성) — 트랜잭션 보장
+-- 입력: 주문 ID
+-- 동작: 각 order_item 의 quantity 를 import_date 오름차순(FIFO) 으로 lot 에서
+--      차감. 0 도달 lot 은 status='depleted'. 재고 부족 시 EXCEPTION 으로 롤백.
+-- ============================================================================
+CREATE OR REPLACE FUNCTION dispatch_order(p_order_id UUID)
+RETURNS VOID AS $$
+DECLARE
+  v_item RECORD;
+  v_lot RECORD;
+  v_remaining DECIMAL(10,2);
+  v_take DECIMAL(10,2);
+  v_user UUID := auth.uid();
+BEGIN
+  FOR v_item IN
+    SELECT oi.product_id, oi.quantity, p.name AS product_name
+    FROM order_items oi
+    JOIN products p ON p.id = oi.product_id
+    WHERE oi.order_id = p_order_id
+  LOOP
+    v_remaining := v_item.quantity;
+
+    FOR v_lot IN
+      SELECT id, quantity
+      FROM inventory
+      WHERE product_id = v_item.product_id
+        AND status = 'active'
+        AND quantity > 0
+      ORDER BY import_date ASC NULLS LAST, created_at ASC
+    LOOP
+      EXIT WHEN v_remaining <= 0;
+
+      v_take := LEAST(v_remaining, v_lot.quantity);
+
+      UPDATE inventory
+      SET    quantity   = quantity - v_take,
+             status     = CASE WHEN (quantity - v_take) <= 0 THEN 'depleted' ELSE 'active' END,
+             updated_at = NOW()
+      WHERE  id = v_lot.id;
+
+      INSERT INTO inventory_logs
+        (inventory_id, product_id, log_type, quantity, order_id, input_method, memo, created_by)
+      VALUES
+        (v_lot.id, v_item.product_id, 'out', -v_take, p_order_id, 'manual',
+         '출고 — 주문 ' || SUBSTRING(p_order_id::text, 1, 8), v_user);
+
+      v_remaining := v_remaining - v_take;
+    END LOOP;
+
+    IF v_remaining > 0 THEN
+      RAISE EXCEPTION '재고 부족: % — 추가 %kg 필요', v_item.product_name, v_remaining;
+    END IF;
+  END LOOP;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- ============================================================================
 -- Row Level Security (RLS) 정책
 -- 5계층 권한: chairman / super_admin / admin / driver / customer
 -- ⚠️ chairman 은 SELECT 만 — INSERT/UPDATE/DELETE 정책 절대 부여 금지

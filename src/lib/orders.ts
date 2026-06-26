@@ -58,8 +58,9 @@ export async function updateOrderStatus(
 ): Promise<void> {
   const supabase = createClient();
 
-  // 게이트: 세금계산서 발행 전에는 배송을 시작할 수 없음
+  // 배송 시작 전 게이트: 세금계산서 발행 + FIFO 출고
   if (status === 'shipping') {
+    // 1) 세금계산서 발행 여부
     const { data: inv } = await supabase
       .from('invoices')
       .select('id')
@@ -68,6 +69,20 @@ export async function updateOrderStatus(
       .limit(1);
     if (!inv || inv.length === 0) {
       throw new Error('세금계산서 발행 후 배송을 시작할 수 있습니다.');
+    }
+
+    // 2) 이미 출고 처리되어 있는지 확인 — 중복 차감 방지
+    const { data: already } = await supabase
+      .from('inventory_logs')
+      .select('id')
+      .eq('order_id', orderId)
+      .eq('log_type', 'out')
+      .limit(1);
+
+    // 3) 미출고 상태면 FIFO lot 차감 (Postgres 함수가 트랜잭션 보장)
+    if (!already || already.length === 0) {
+      const { error: dErr } = await supabase.rpc('dispatch_order', { p_order_id: orderId });
+      if (dErr) throw new Error(dErr.message);
     }
   }
 
