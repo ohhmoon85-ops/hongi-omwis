@@ -88,13 +88,6 @@ async function getKPIs(): Promise<DashboardKPIs> {
   }
 }
 
-const QUICK_LINKS = [
-  { href: '/admin/orders',     label: '📋 주문 관리',    desc: '승인·거절·납기조정·세금계산서·배송' },
-  { href: '/admin/customers',  label: '🏢 거래처 관리',  desc: '등록·D2C 이관 관리·신용 한도' },
-  { href: '/admin/inventory',  label: '📦 재고 관리',    desc: '입고·Lot·재고 조정·안전재고' },
-  { href: '/admin/deliveries', label: '🚛 배송 관리',    desc: '배차·출발·배송 완료' },
-];
-
 // ACIS 구매 신호는 회장·슈퍼관리자 전용 — 일반 운영 관리자에게는 미노출
 async function currentRole(): Promise<string | null> {
   if (isDevMode) return null;
@@ -140,10 +133,13 @@ export default async function AdminDashboardPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-app p-4 sm:p-6 text-white">
+    <div className="p-4 sm:p-6">
       <header className="mb-6 flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">관리자 대시보드</h1>
+          <div className="text-[11px] font-semibold tracking-widest uppercase text-[#c8962e]/80 mb-1">
+            관리자 대시보드
+          </div>
+          <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-gold-gradient">(주)홍지</h1>
           <p className="text-sm text-gray-400 mt-1">매일 아침 핵심 경영 지표 한눈에</p>
         </div>
         {canSeeACIS && ACIS_APP_URL && (
@@ -186,22 +182,6 @@ export default async function AdminDashboardPage() {
         ))}
         {canSeeACIS && <ACISCard />}
       </div>
-
-      <section className="mt-8">
-        <div className="text-xs text-gray-400 mb-2">바로가기</div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          {QUICK_LINKS.map((l) => (
-            <Link key={l.href} href={l.href}>
-              <Card className="bg-gradient-to-b from-[#181c28] to-[#13161f] border-white/[0.06] text-white hover:border-[#1a3d6b] transition cursor-pointer">
-                <CardContent className="py-4">
-                  <div className="text-base font-semibold text-gray-200">{l.label}</div>
-                  <div className="text-xs text-gray-500 mt-1">{l.desc}</div>
-                </CardContent>
-              </Card>
-            </Link>
-          ))}
-        </div>
-      </section>
 
       <footer className="mt-8 text-xs text-gray-500">
         {isDevMode

@@ -8,9 +8,10 @@ export default function ChairmanMonitorPage() {
     <div className="min-h-screen bg-app p-4 sm:p-6 text-white">
       <header className="mb-6 flex items-center justify-between">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-[#c8962e]">
-            👑 회장 모니터링 대시보드
-          </h1>
+          <div className="text-[11px] font-semibold tracking-widest uppercase text-[#c8962e]/80 mb-1">
+            👑 회장 모니터링
+          </div>
+          <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-gold-gradient">(주)홍지</h1>
           <p className="text-sm text-gray-400 mt-1">
             전사 현황을 실시간 열람 — 모든 데이터는 Read-Only
           </p>

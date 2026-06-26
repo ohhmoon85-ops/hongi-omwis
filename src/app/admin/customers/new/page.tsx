@@ -4,7 +4,7 @@ import { ChevronLeft } from 'lucide-react';
 
 export default function NewCustomerPage() {
   return (
-    <div className="min-h-screen bg-app p-4 sm:p-6 text-white">
+    <div className="p-4 sm:p-6">
       <header className="mb-6 max-w-3xl">
         <Link
           href="/admin/customers"
