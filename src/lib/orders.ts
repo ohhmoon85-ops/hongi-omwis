@@ -119,6 +119,43 @@ async function ensureDelivery(orderId: string): Promise<void> {
   });
 }
 
+// 수동 출고 처리 — 상태 변경 없이 dispatch_order(FIFO 차감) 만 실행.
+// 사용 예: 세금계산서 발행 전 미리 출고하거나, 외상 거래 등 별도 경로.
+// 멱등: 이미 출고된 주문이면 에러 던짐 (중복 차감 방지).
+export async function dispatchOrderManually(orderId: string): Promise<void> {
+  const supabase = createClient();
+
+  const { data: existing } = await supabase
+    .from('inventory_logs')
+    .select('id')
+    .eq('order_id', orderId)
+    .eq('log_type', 'out')
+    .limit(1);
+  if (existing && existing.length > 0) {
+    throw new Error('이미 출고 처리된 주문입니다.');
+  }
+
+  const { error } = await supabase.rpc('dispatch_order', { p_order_id: orderId });
+  if (error) throw new Error(error.message);
+}
+
+// 어떤 주문들이 이미 출고(=재고 차감)되었는지 — UI 배지 표시용
+export async function fetchDispatchedOrderIds(): Promise<Set<string>> {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from('inventory_logs')
+    .select('order_id')
+    .eq('log_type', 'out')
+    .not('order_id', 'is', null);
+  if (error) {
+    console.warn('[orders] dispatched ids fetch failed:', error.message);
+    return new Set();
+  }
+  const ids = new Set<string>();
+  for (const r of data ?? []) if (r.order_id) ids.add(r.order_id);
+  return ids;
+}
+
 // 거래처 재주문 — 기존 품목으로 신규 주문 생성 (서버 API 경유: 주문번호·알림 처리)
 export async function reorder(order: DevOrder): Promise<string> {
   const res = await fetch('/api/orders', {
