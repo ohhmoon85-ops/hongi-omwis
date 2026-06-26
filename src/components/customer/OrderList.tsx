@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { Truck } from 'lucide-react';
+import { RefreshCw, Copy, Truck } from 'lucide-react';
 import { loadDevOrders, saveDevOrder, generateDevOrderNumber, type DevOrder } from '@/lib/dev-orders';
 import { fetchOrders, reorder as reorderApi } from '@/lib/orders';
 import { isDevMode } from '@/lib/dev-data';
@@ -11,7 +11,6 @@ import { ORDER_STATUS_BADGE, type OrderStatus } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import toast, { Toaster } from 'react-hot-toast';
-import { RefreshCw, Copy } from 'lucide-react';
 
 const STATUS_FILTERS: Array<{ key: OrderStatus | 'all'; label: string }> = [
   { key: 'all',        label: '전체' },
