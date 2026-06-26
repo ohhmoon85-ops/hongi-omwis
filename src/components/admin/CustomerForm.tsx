@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import toast, { Toaster } from 'react-hot-toast';
+import { ShieldCheck, ShieldAlert, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -225,11 +226,9 @@ export function CustomerForm({ initial, mode }: Props) {
           <CardContent className="space-y-3">
             <Row>
               <Field label="사업자등록번호">
-                <Input
+                <BizNumberInput
                   value={form.business_number ?? ''}
-                  onChange={(e) => set('business_number', e.target.value || null)}
-                  className="bg-[#0f1117] border-[#2a2f3e] text-white"
-                  placeholder="123-45-67890"
+                  onChange={(v) => set('business_number', v || null)}
                 />
               </Field>
               <Field label="대표자">
@@ -322,6 +321,89 @@ export function CustomerForm({ initial, mode }: Props) {
 
 function Row({ children }: { children: React.ReactNode }) {
   return <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">{children}</div>;
+}
+
+// 사업자등록번호 입력 + 국세청 검증 버튼 — verifyBusinessNumber API 호출
+function BizNumberInput({
+  value, onChange,
+}: { value: string; onChange: (v: string) => void }) {
+  const [status, setStatus] = useState<
+    null | { ok: boolean; label: string; mock: boolean; detail?: string }
+  >(null);
+  const [busy, setBusy] = useState(false);
+
+  // 입력 변경 시 검증 결과 초기화
+  function update(v: string) {
+    onChange(v);
+    if (status) setStatus(null);
+  }
+
+  async function verify() {
+    if (!value.trim()) return;
+    setBusy(true);
+    try {
+      const res = await fetch('/api/biz/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ b_no: value }),
+      });
+      const data = await res.json();
+      if (!data.valid) {
+        setStatus({
+          ok: false,
+          label: data.error ?? '미확인',
+          mock: data.mock ?? false,
+        });
+        toast.error(data.error ?? '검증 실패');
+        return;
+      }
+      setStatus({
+        ok: true,
+        label: data.mock ? '형식 OK (Mock)' : data.status,
+        mock: data.mock,
+        detail: data.taxType,
+      });
+      toast.success(data.mock ? '체크섬 통과 (실 조회는 API 키 설정 후)' : `${data.status} ${data.taxType ?? ''}`);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : '검증 호출 실패');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div>
+      <div className="flex gap-1.5">
+        <Input
+          value={value}
+          onChange={(e) => update(e.target.value)}
+          className="bg-[#0f1117] border-[#2a2f3e] text-white flex-1"
+          placeholder="123-45-67890"
+        />
+        <button
+          type="button"
+          onClick={verify}
+          disabled={busy || !value.trim()}
+          className="h-10 px-3 inline-flex items-center gap-1 text-xs rounded-md bg-[#1a3d6b]/30 text-blue-300 border border-blue-500/30 hover:bg-[#1a3d6b]/50 disabled:opacity-40"
+        >
+          {busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <ShieldCheck className="w-3.5 h-3.5" />}
+          검증
+        </button>
+      </div>
+      {status && (
+        <div className={`mt-1.5 text-[11px] inline-flex items-center gap-1 ${
+          status.ok ? 'text-green-400' : 'text-red-400'
+        }`}>
+          {status.ok ? <ShieldCheck className="w-3 h-3" /> : <ShieldAlert className="w-3 h-3" />}
+          {status.label}
+          {status.detail && <span className="text-gray-400 ml-1">({status.detail})</span>}
+          {status.mock && status.ok && (
+            <span className="ml-1 text-amber-400">⚠ API 키 미설정</span>
+          )}
+        </div>
+      )}
+    </div>
+  );
 }
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
