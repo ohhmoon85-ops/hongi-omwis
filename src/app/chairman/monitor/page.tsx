@@ -1,5 +1,6 @@
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { ACISCard } from '@/components/shared/ACISCard';
+import { ChairmanCharts } from '@/components/chairman/ChairmanCharts';
 
 // 👑 회장 전용 모니터링 대시보드 — Read-Only
 // ⚠️ 이 화면에는 어떤 편집·생성·삭제 UI 도 두지 말 것
@@ -21,14 +22,15 @@ export default function ChairmanMonitorPage() {
         </span>
       </header>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        <PlaceholderCard title="📊 매출 현황" subtitle="일/월/분기/연 매출 + 전년 대비" />
-        <PlaceholderCard title="📦 주문·배송" subtitle="신규 주문, 진행/완료 배송 요약" />
+      {/* KPI / ACIS / 보조 카드 */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
         <PlaceholderCard title="📋 재고 현황" subtitle="품목별 현재고 + 안전재고 미달" />
         <PlaceholderCard title="💰 수금·미수금" subtitle="거래처별 미수금, 한도 초과" />
         <ACISCard />
-        <PlaceholderCard title="🏢 거래처 순위" subtitle="이달 매출 상위 거래처" />
       </div>
+
+      {/* 차트 섹션 (신규) — 매출 추세 / 거래처 순위 / 주문 상태 */}
+      <ChairmanCharts />
 
       <footer className="mt-8 text-center text-xs text-gray-500">
         경영 지표는 단계적 실데이터 연동 중 — ACIS 구매 신호는 실시간 연동됨
