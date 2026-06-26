@@ -9,6 +9,7 @@
 import { createClient } from '@/lib/supabase/client';
 
 export const CUSTOMS_DOCS_BUCKET = 'customs-docs';
+export const DELIVERY_PHOTOS_BUCKET = 'delivery-photos';
 
 export interface UploadResult {
   path: string;        // 버킷 내 경로 (예: 2026/03/abc.jpg)
@@ -65,4 +66,30 @@ export async function getCustomsDocUrl(path: string): Promise<string | null> {
 export async function deleteCustomsDoc(path: string): Promise<void> {
   const supabase = createClient();
   await supabase.storage.from(CUSTOMS_DOCS_BUCKET).remove([path]);
+}
+
+/** 배송 완료 사진 업로드 — Private 'delivery-photos' 버킷 */
+export async function uploadDeliveryPhoto(file: File): Promise<UploadResult> {
+  const supabase = createClient();
+  const path = makePath(file.name);
+  const { error: upErr } = await supabase.storage
+    .from(DELIVERY_PHOTOS_BUCKET)
+    .upload(path, file, { cacheControl: '3600', upsert: false, contentType: file.type });
+  if (upErr) throw new Error(upErr.message);
+
+  const { data, error: sErr } = await supabase.storage
+    .from(DELIVERY_PHOTOS_BUCKET)
+    .createSignedUrl(path, 3600);
+  if (sErr) throw new Error(sErr.message);
+  return { path, signedUrl: data?.signedUrl };
+}
+
+/** 저장된 path → 새 서명 URL */
+export async function getDeliveryPhotoUrl(path: string): Promise<string | null> {
+  const supabase = createClient();
+  const { data, error } = await supabase.storage
+    .from(DELIVERY_PHOTOS_BUCKET)
+    .createSignedUrl(path, 3600);
+  if (error) return null;
+  return data?.signedUrl ?? null;
 }

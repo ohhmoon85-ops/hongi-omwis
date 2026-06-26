@@ -11,6 +11,9 @@ export interface DeliveryView extends Delivery {
   order_number: string | null;
   memo?: string | null;
   scheduled_date: string | null;
+  // 배송 기사 모바일 워크플로우 보조 — 전화/지도/사진
+  customer_name: string | null;
+  customer_phone: string | null;
 }
 
 export type DeliveryAction = 'depart' | 'complete';
@@ -29,13 +32,15 @@ export async function fetchDeliveries(): Promise<DeliveryView[]> {
   const supabase = createClient();
   const { data, error } = await supabase
     .from('deliveries')
-    .select('*, orders(order_number)')
+    .select('*, orders(order_number, customers(company_name, phone))')
     .order('created_at', { ascending: false });
   if (error) throw new Error(error.message);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   return (data ?? []).map((d: any) => ({
     ...d,
     order_number: d.orders?.order_number ?? null,
+    customer_name: d.orders?.customers?.company_name ?? null,
+    customer_phone: d.orders?.customers?.phone ?? null,
   }));
 }
 
@@ -49,4 +54,20 @@ export async function driverAction(
     body: JSON.stringify({ delivery_id: deliveryId, action }),
   });
   if (!res.ok) throw new Error(await res.text());
+}
+
+// 배송 완료 사진 path 를 deliveries.completion_photo_url 에 저장
+export async function saveDeliveryPhotoPath(
+  deliveryId: string,
+  storagePath: string,
+): Promise<void> {
+  const supabase = createClient();
+  const { error } = await supabase
+    .from('deliveries')
+    .update({
+      completion_photo_url: storagePath,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', deliveryId);
+  if (error) throw new Error(error.message);
 }
