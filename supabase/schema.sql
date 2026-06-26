@@ -265,6 +265,7 @@ DROP POLICY IF EXISTS "admin_all_notify"     ON notifications;
 CREATE POLICY "admin_all_notify"     ON notifications   FOR ALL USING (current_role_v() IN ('super_admin','admin'));
 DROP POLICY IF EXISTS "admin_all_safety"     ON safety_stock;
 CREATE POLICY "admin_all_safety"     ON safety_stock    FOR ALL USING (current_role_v() IN ('super_admin','admin'));
+DROP POLICY IF EXISTS "admin_all_invoices"   ON invoices;
 CREATE POLICY "admin_all_invoices"   ON invoices        FOR ALL USING (current_role_v() IN ('super_admin','admin'));
 
 -- ─────────────────────────────────────────────────────────────────────────────
@@ -284,6 +285,7 @@ DROP POLICY IF EXISTS "chair_read_invlogs"    ON inventory_logs;
 CREATE POLICY "chair_read_invlogs"    ON inventory_logs  FOR SELECT USING (current_role_v() = 'chairman');
 DROP POLICY IF EXISTS "chair_read_deliveries" ON deliveries;
 CREATE POLICY "chair_read_deliveries" ON deliveries      FOR SELECT USING (current_role_v() = 'chairman');
+DROP POLICY IF EXISTS "chair_read_invoices"   ON invoices;
 CREATE POLICY "chair_read_invoices"   ON invoices        FOR SELECT USING (current_role_v() = 'chairman');
 
 -- ─────────────────────────────────────────────────────────────────────────────
@@ -331,6 +333,7 @@ CREATE POLICY "cust_read_own_prices" ON customer_prices FOR SELECT
   USING (current_role_v() = 'customer' AND customer_id = current_customer_id());
 
 -- 거래처는 자사 세금계산서만 조회
+DROP POLICY IF EXISTS "cust_read_own_invoices" ON invoices;
 CREATE POLICY "cust_read_own_invoices" ON invoices FOR SELECT
   USING (current_role_v() = 'customer' AND customer_id = current_customer_id());
 
