@@ -20,8 +20,8 @@ export function AccountPasswordForm({ userEmail }: Props) {
   async function submit(e: React.FormEvent) {
     e.preventDefault();
 
-    if (next.length < 4) {
-      toast.error('새 비밀번호는 최소 4자 이상이어야 합니다');
+    if (next.length < 6) {
+      toast.error('새 비밀번호는 최소 6자 이상이어야 합니다');
       return;
     }
     if (next !== confirm) {
@@ -82,14 +82,14 @@ export function AccountPasswordForm({ userEmail }: Props) {
           />
         </div>
         <div>
-          <Label htmlFor="next" className="text-xs text-gray-400">새 비밀번호 (최소 4자)</Label>
+          <Label htmlFor="next" className="text-xs text-gray-400">새 비밀번호 (최소 6자)</Label>
           <Input
             id="next"
             type={showPw ? 'text' : 'password'}
             value={next}
             onChange={(e) => setNext(e.target.value)}
             required
-            minLength={4}
+            minLength={6}
             autoComplete="new-password"
             className="mt-1 bg-[#0f1117] border-[#2a2f3e] text-white"
           />

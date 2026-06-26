@@ -74,8 +74,8 @@ export async function POST(req: NextRequest) {
 
   const { user_id, password } = (await req.json()) as { user_id?: string; password?: string };
   if (!user_id) return apiError('validation', 'user_id 가 필요합니다');
-  if (!password || password.length < 4) {
-    return apiError('validation', '비밀번호는 최소 4자 이상이어야 합니다');
+  if (!password || password.length < 6) {
+    return apiError('validation', '비밀번호는 최소 6자 이상이어야 합니다');
   }
 
   const admin = createAdminClient();

@@ -31,8 +31,9 @@ const supabase = createClient(SUPABASE_URL, SERVICE_KEY, {
   realtime: { transport: ws },
 });
 
-// ⚠️ 개발 단계 — 모든 계정 비밀번호 1234 통일 (운영 전환 시 각자 변경)
-const DEV_PASSWORD = '1234';
+// ⚠️ 개발 단계 — 모든 계정 비밀번호 omwis1234 통일 (운영 전환 시 각자 변경)
+// Supabase 기본 최소 비번 길이 6자 정책 충족
+const DEV_PASSWORD = 'omwis1234';
 
 // ─── 정본 5계정 — 모두 @hongi.co.kr / @samscb.kr 통일 ──────────────────────
 const USERS = [

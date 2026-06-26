@@ -183,13 +183,13 @@ function ResetPasswordModal({
   onClose: () => void;
   onDone: () => void;
 }) {
-  const [pw, setPw] = useState('1234');
+  const [pw, setPw] = useState('omwis1234');
   const [showPw, setShowPw] = useState(true);
   const [busy, setBusy] = useState(false);
 
   async function submit() {
-    if (pw.length < 4) {
-      toast.error('비밀번호는 최소 4자 이상');
+    if (pw.length < 6) {
+      toast.error('비밀번호는 최소 6자 이상');
       return;
     }
     setBusy(true);
@@ -229,13 +229,13 @@ function ResetPasswordModal({
         </div>
 
         <div>
-          <Label className="text-xs text-gray-400">새 비밀번호 (기본값: 1234)</Label>
+          <Label className="text-xs text-gray-400">새 비밀번호 (기본값: omwis1234, 최소 6자)</Label>
           <div className="mt-1 flex gap-2">
             <Input
               type={showPw ? 'text' : 'password'}
               value={pw}
               onChange={(e) => setPw(e.target.value)}
-              minLength={4}
+              minLength={6}
               autoFocus
               className="flex-1 bg-[#0f1117] border-[#2a2f3e] text-white font-mono"
             />
@@ -258,7 +258,7 @@ function ResetPasswordModal({
           <Button onClick={onClose} variant="outline" disabled={busy}>취소</Button>
           <Button
             onClick={submit}
-            disabled={busy || pw.length < 4}
+            disabled={busy || pw.length < 6}
             className="bg-blue-600 hover:bg-blue-700 text-white"
           >
             {busy ? '변경 중...' : '비번 변경'}

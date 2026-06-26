@@ -46,8 +46,8 @@ function ResetForm() {
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
-    if (pw.length < 4) {
-      toast.error('비밀번호는 최소 4자 이상이어야 합니다');
+    if (pw.length < 6) {
+      toast.error('비밀번호는 최소 6자 이상이어야 합니다');
       return;
     }
     if (pw !== confirm) {
@@ -101,7 +101,7 @@ function ResetForm() {
   return (
     <form onSubmit={submit} className="space-y-4">
       <div>
-        <Label htmlFor="pw" className="text-gray-300">새 비밀번호 (최소 4자)</Label>
+        <Label htmlFor="pw" className="text-gray-300">새 비밀번호 (최소 6자)</Label>
         <div className="mt-1 relative">
           <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
           <Input
@@ -110,7 +110,7 @@ function ResetForm() {
             value={pw}
             onChange={(e) => setPw(e.target.value)}
             required
-            minLength={4}
+            minLength={6}
             autoComplete="new-password"
             className="bg-[#0f1117] border-[#2a2f3e] text-white pl-9"
           />
