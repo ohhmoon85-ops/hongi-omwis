@@ -5,7 +5,7 @@ import { ACISCard } from '@/components/shared/ACISCard';
 // ⚠️ 이 화면에는 어떤 편집·생성·삭제 UI 도 두지 말 것
 export default function ChairmanMonitorPage() {
   return (
-    <div className="min-h-screen bg-[#0f1117] p-4 sm:p-6 text-white">
+    <div className="min-h-screen bg-app p-4 sm:p-6 text-white">
       <header className="mb-6 flex items-center justify-between">
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold text-[#c8962e]">
@@ -30,7 +30,7 @@ export default function ChairmanMonitorPage() {
       </div>
 
       <footer className="mt-8 text-center text-xs text-gray-500">
-        Phase 4 에서 실데이터 연동 예정 — 현재는 placeholder 표시 (ACIS 신호는 Mock 활성)
+        경영 지표는 단계적 실데이터 연동 중 — ACIS 구매 신호는 실시간 연동됨
       </footer>
     </div>
   );
@@ -38,7 +38,7 @@ export default function ChairmanMonitorPage() {
 
 function PlaceholderCard({ title, subtitle }: { title: string; subtitle: string }) {
   return (
-    <Card className="bg-[#171b26] border-[#1f2433] text-white">
+    <Card className="bg-gradient-to-b from-[#181c28] to-[#13161f] border-white/[0.06] text-white">
       <CardHeader>
         <CardTitle className="text-base text-gray-200">{title}</CardTitle>
         <p className="text-xs text-gray-500 mt-1">{subtitle}</p>

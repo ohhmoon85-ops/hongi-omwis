@@ -133,7 +133,7 @@ export function AdminOrderList() {
       {!loaded ? (
         <div className="text-sm text-gray-500">불러오는 중...</div>
       ) : filtered.length === 0 ? (
-        <Card className="bg-[#171b26] border-[#1f2433]">
+        <Card className="bg-gradient-to-b from-[#181c28] to-[#13161f] border-white/[0.06]">
           <CardContent className="py-12 text-center text-sm text-gray-500">
             해당 상태의 주문이 없습니다.
           </CardContent>
@@ -198,7 +198,7 @@ function OrderRow({
   const shippingBlocked = (s: OrderStatus) => s === 'shipping' && !isDevMode && !hasInvoice;
 
   return (
-    <Card className="bg-[#171b26] border-[#1f2433] text-white">
+    <Card className="bg-gradient-to-b from-[#181c28] to-[#13161f] border-white/[0.06] text-white">
       <CardContent className="py-4">
         <div
           className="flex flex-wrap items-start justify-between gap-3 cursor-pointer"

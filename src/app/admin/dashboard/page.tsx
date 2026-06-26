@@ -4,6 +4,8 @@ import { ACISCard } from '@/components/shared/ACISCard';
 import { createClient } from '@/lib/supabase/server';
 import { isDevMode } from '@/lib/dev-data';
 import { formatKRW } from '@/lib/utils';
+import { ACIS_APP_URL } from '@/lib/acis';
+import { ExternalLink } from 'lucide-react';
 
 export const dynamic = 'force-dynamic';
 
@@ -93,8 +95,24 @@ const QUICK_LINKS = [
   { href: '/admin/deliveries', label: '🚛 배송 관리',    desc: '배차·출발·배송 완료' },
 ];
 
+// ACIS 구매 신호는 회장·슈퍼관리자 전용 — 일반 운영 관리자에게는 미노출
+async function currentRole(): Promise<string | null> {
+  if (isDevMode) return null;
+  try {
+    const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return null;
+    const { data } = await supabase
+      .from('user_profiles').select('role').eq('id', user.id).single();
+    return data?.role ?? null;
+  } catch {
+    return null;
+  }
+}
+
 export default async function AdminDashboardPage() {
-  const kpi = await getKPIs();
+  const [kpi, role] = await Promise.all([getKPIs(), currentRole()]);
+  const canSeeACIS = role === 'super_admin';
 
   const cards = [
     {
@@ -122,27 +140,51 @@ export default async function AdminDashboardPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-[#0f1117] p-4 sm:p-6 text-white">
-      <header className="mb-6">
-        <h1 className="text-2xl sm:text-3xl font-bold">관리자 대시보드</h1>
-        <p className="text-sm text-gray-400 mt-1">매일 아침 핵심 경영 지표 한눈에</p>
+    <div className="min-h-screen bg-app p-4 sm:p-6 text-white">
+      <header className="mb-6 flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">관리자 대시보드</h1>
+          <p className="text-sm text-gray-400 mt-1">매일 아침 핵심 경영 지표 한눈에</p>
+        </div>
+        {canSeeACIS && ACIS_APP_URL && (
+          <div className="flex items-center gap-2">
+            <Link
+              href="/admin/acis"
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-[#c8962e] hover:bg-[#b3851f] text-white text-sm font-semibold transition shadow"
+            >
+              🤖 ACIS 임베드 보기
+            </Link>
+            <a
+              href={ACIS_APP_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border border-[#c8962e]/40 text-[#c8962e] hover:bg-[#c8962e]/10 text-sm font-semibold transition"
+              title="새 탭으로 ACIS 열기"
+            >
+              새 탭 <ExternalLink className="w-4 h-4" />
+            </a>
+          </div>
+        )}
       </header>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {cards.map((c) => (
-          <Card key={c.title} className="bg-[#171b26] border-[#1f2433] text-white">
+          <Card
+            key={c.title}
+            className="bg-gradient-to-b from-[#181c28] to-[#13161f] border-white/[0.06] text-white hover:ring-white/[0.10] hover:-translate-y-0.5"
+          >
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm text-gray-300">
-                <span className="mr-2">{c.icon}</span>{c.title}
+              <CardTitle className="text-xs font-medium uppercase tracking-wider text-gray-400">
+                <span className="mr-2 text-sm">{c.icon}</span>{c.title}
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className={`text-3xl font-bold ${c.color}`}>{c.value}</div>
-              <div className="text-xs text-gray-500 mt-1">{c.desc}</div>
+              <div className={`text-3xl sm:text-4xl font-extrabold tracking-tight ${c.color}`}>{c.value}</div>
+              <div className="text-xs text-gray-500 mt-1.5">{c.desc}</div>
             </CardContent>
           </Card>
         ))}
-        <ACISCard />
+        {canSeeACIS && <ACISCard />}
       </div>
 
       <section className="mt-8">
@@ -150,7 +192,7 @@ export default async function AdminDashboardPage() {
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           {QUICK_LINKS.map((l) => (
             <Link key={l.href} href={l.href}>
-              <Card className="bg-[#171b26] border-[#1f2433] text-white hover:border-[#1a3d6b] transition cursor-pointer">
+              <Card className="bg-gradient-to-b from-[#181c28] to-[#13161f] border-white/[0.06] text-white hover:border-[#1a3d6b] transition cursor-pointer">
                 <CardContent className="py-4">
                   <div className="text-base font-semibold text-gray-200">{l.label}</div>
                   <div className="text-xs text-gray-500 mt-1">{l.desc}</div>

@@ -94,7 +94,7 @@ export function CustomerForm({ initial, mode }: Props) {
       <Toaster position="top-center" />
 
       <form onSubmit={onSubmit} className="space-y-4 max-w-3xl text-white">
-        <Card className="bg-[#171b26] border-[#1f2433]">
+        <Card className="bg-gradient-to-b from-[#181c28] to-[#13161f] border-white/[0.06]">
           <CardHeader>
             <CardTitle className="text-base text-gray-200">기본 정보</CardTitle>
           </CardHeader>
@@ -140,7 +140,7 @@ export function CustomerForm({ initial, mode }: Props) {
           </CardContent>
         </Card>
 
-        <Card className="bg-[#171b26] border-[#1f2433]">
+        <Card className="bg-gradient-to-b from-[#181c28] to-[#13161f] border-white/[0.06]">
           <CardHeader>
             <CardTitle className="text-base text-gray-200">주소</CardTitle>
           </CardHeader>
@@ -163,7 +163,7 @@ export function CustomerForm({ initial, mode }: Props) {
           </CardContent>
         </Card>
 
-        <Card className="bg-[#171b26] border-[#1f2433]">
+        <Card className="bg-gradient-to-b from-[#181c28] to-[#13161f] border-white/[0.06]">
           <CardHeader>
             <CardTitle className="text-base text-gray-200">단가 등급 · 신용 한도</CardTitle>
           </CardHeader>
@@ -193,7 +193,7 @@ export function CustomerForm({ initial, mode }: Props) {
           </CardContent>
         </Card>
 
-        <Card className="bg-[#171b26] border-[#1f2433]">
+        <Card className="bg-gradient-to-b from-[#181c28] to-[#13161f] border-white/[0.06]">
           <CardHeader>
             <CardTitle className="text-base text-gray-200">
               D2C 이관 이력 (대리점 거래처인 경우만 입력)
@@ -216,7 +216,7 @@ export function CustomerForm({ initial, mode }: Props) {
           </CardContent>
         </Card>
 
-        <Card className="bg-[#171b26] border-[#1f2433]">
+        <Card className="bg-gradient-to-b from-[#181c28] to-[#13161f] border-white/[0.06]">
           <CardHeader>
             <CardTitle className="text-base text-gray-200">
               사업자 정보 (세금계산서 발행용)
@@ -270,7 +270,7 @@ export function CustomerForm({ initial, mode }: Props) {
           </CardContent>
         </Card>
 
-        <Card className="bg-[#171b26] border-[#1f2433]">
+        <Card className="bg-gradient-to-b from-[#181c28] to-[#13161f] border-white/[0.06]">
           <CardHeader>
             <CardTitle className="text-base text-gray-200">메모 (선택)</CardTitle>
           </CardHeader>

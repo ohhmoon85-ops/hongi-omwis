@@ -9,6 +9,13 @@ const config: Config = {
   ],
   theme: {
     extend: {
+      fontFamily: {
+        sans: [
+          'Pretendard', 'Pretendard Variable', 'system-ui',
+          '-apple-system', 'Segoe UI', 'Roboto', 'Apple SD Gothic Neo',
+          'Noto Sans KR', 'Malgun Gothic', 'sans-serif',
+        ],
+      },
       colors: {
         background:       'hsl(var(--background))',
         foreground:       'hsl(var(--foreground))',

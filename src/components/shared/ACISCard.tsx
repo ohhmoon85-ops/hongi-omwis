@@ -1,6 +1,7 @@
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
-import { getACISSignal, ACIS_SIGNAL_BADGE } from '@/lib/acis';
+import { getACISSignal, ACIS_SIGNAL_BADGE, ACIS_APP_URL } from '@/lib/acis';
 import { formatNumber } from '@/lib/utils';
+import { ExternalLink } from 'lucide-react';
 
 // 관리자·회장 대시보드 공용 — ACIS 구매 신호 카드
 export async function ACISCard() {
@@ -8,15 +9,27 @@ export async function ACISCard() {
   const badge = ACIS_SIGNAL_BADGE[s.signal];
 
   return (
-    <Card className="bg-[#171b26] border-[#1f2433] text-white">
+    <Card className="bg-gradient-to-b from-[#181c28] to-[#13161f] border-white/[0.06] text-white">
       <CardHeader className="pb-2">
         <CardTitle className="text-sm text-gray-300 flex items-center justify-between">
           <span>🤖 ACIS 구매 신호</span>
-          {s.is_mock && (
-            <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-400 border border-amber-500/30">
-              MOCK
-            </span>
-          )}
+          <span className="flex items-center gap-2">
+            {s.is_mock && (
+              <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-400 border border-amber-500/30">
+                MOCK
+              </span>
+            )}
+            {ACIS_APP_URL && (
+              <a
+                href={ACIS_APP_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 text-[11px] text-[#c8962e] hover:underline"
+              >
+                열기 <ExternalLink className="w-3 h-3" />
+              </a>
+            )}
+          </span>
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">

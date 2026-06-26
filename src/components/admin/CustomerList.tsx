@@ -107,7 +107,7 @@ export function CustomerList() {
       {!loaded ? (
         <div className="text-sm text-gray-500">불러오는 중...</div>
       ) : filtered.length === 0 ? (
-        <Card className="bg-[#171b26] border-[#1f2433]">
+        <Card className="bg-gradient-to-b from-[#181c28] to-[#13161f] border-white/[0.06]">
           <CardContent className="py-12 text-center text-sm text-gray-500">
             조건에 맞는 거래처가 없습니다.
           </CardContent>
@@ -119,7 +119,7 @@ export function CustomerList() {
             const overLimit = c.current_balance > c.credit_limit;
             return (
               <Link key={c.id} href={`/admin/customers/${c.id}`}>
-                <Card className="bg-[#171b26] border-[#1f2433] text-white hover:border-[#1a3d6b] transition cursor-pointer">
+                <Card className="bg-gradient-to-b from-[#181c28] to-[#13161f] border-white/[0.06] text-white hover:border-[#1a3d6b] transition cursor-pointer">
                   <CardContent className="py-3">
                     <div className="flex flex-wrap items-start justify-between gap-3">
                       <div className="flex-1 min-w-[260px]">
@@ -179,7 +179,7 @@ export function CustomerList() {
 
 function StatCard({ label, value, sub }: { label: string; value: string; sub: string }) {
   return (
-    <Card className="bg-[#171b26] border-[#1f2433] text-white">
+    <Card className="bg-gradient-to-b from-[#181c28] to-[#13161f] border-white/[0.06] text-white">
       <CardContent className="py-4">
         <div className="text-xs text-gray-400">{label}</div>
         <div className="text-2xl font-bold text-[#c8962e] mt-1">{value}</div>

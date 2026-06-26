@@ -32,7 +32,7 @@ export default async function CustomerOrderPage() {
   const { products, customer } = await loadOrderContext();
 
   return (
-    <div className="min-h-screen bg-[#f5f7fa] p-4 sm:p-6 text-[#1c1c1c]">
+    <div className="min-h-screen bg-app-light p-4 sm:p-6 text-[#1c1c1c]">
       <header className="mb-6 max-w-3xl">
         <div className="flex items-center justify-between">
           <div>

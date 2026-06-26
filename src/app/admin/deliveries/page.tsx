@@ -2,7 +2,7 @@ import { DeliveryList } from '@/components/driver/DeliveryList';
 
 export default function DeliveriesPage() {
   return (
-    <div className="min-h-screen bg-[#0f1117] p-4 sm:p-6 text-white">
+    <div className="min-h-screen bg-app p-4 sm:p-6 text-white">
       <header className="mb-6">
         <h1 className="text-2xl sm:text-3xl font-bold">배송 관리</h1>
         <p className="text-sm text-gray-400 mt-1">

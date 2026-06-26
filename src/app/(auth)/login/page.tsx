@@ -76,12 +76,13 @@ function LoginForm() {
   }
 
   return (
-    <div className="w-full max-w-md bg-[#171b26] border border-[#1f2433] rounded-2xl p-8 shadow-2xl">
+    <div className="w-full max-w-md bg-[#141823]/90 backdrop-blur-xl border border-white/[0.06] rounded-2xl p-8 card-elevated ring-1 ring-[#c8962e]/15">
       <div className="mb-8 text-center">
-        <div className="text-3xl font-bold text-[#c8962e] mb-2">OMWIS</div>
-        <div className="text-sm text-gray-400">
+        <div className="text-5xl font-extrabold tracking-tight text-gold-gradient mb-2">OMWIS</div>
+        <div className="text-sm text-gray-400 tracking-wide">
           (주)홍지 폐쇄형 주문·배송·창고·재고 관리 시스템
         </div>
+        <div className="mx-auto mt-4 h-px w-16 bg-gradient-to-r from-transparent via-[#c8962e]/60 to-transparent" />
       </div>
 
       {isDevMode && (
@@ -130,7 +131,7 @@ function LoginForm() {
         <Button
           type="submit"
           disabled={loading}
-          className="w-full bg-[#1a3d6b] hover:bg-[#235490] text-white"
+          className="w-full h-11 bg-gradient-to-r from-[#1a3d6b] to-[#2a5a96] hover:from-[#1f4a82] hover:to-[#316bb0] text-white shadow-lg shadow-[#1a3d6b]/30"
         >
           {loading ? '로그인 중...' : '로그인'}
         </Button>
@@ -173,7 +174,7 @@ function DevRoleButton({ onClick, label }: { onClick: () => void; label: string 
 
 export default function LoginPage() {
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[#0f1117] p-4">
+    <div className="min-h-screen flex items-center justify-center bg-app p-4">
       <Toaster position="top-center" />
       <Suspense fallback={<div className="text-gray-400">불러오는 중…</div>}>
         <LoginForm />

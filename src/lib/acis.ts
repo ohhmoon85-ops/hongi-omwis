@@ -28,7 +28,30 @@ export interface InventoryStatus {
   should_hold: boolean;
 }
 
-const ACIS_API_URL = process.env.ACIS_API_URL ?? '';
+// 끝의 슬래시 제거 (이중 슬래시 방지)
+const ACIS_API_URL = (process.env.ACIS_API_URL ?? '').replace(/\/+$/, '');
+
+// ACIS 웹앱 바로가기 URL (대시보드 버튼용) — API 와 동일 베이스
+export const ACIS_APP_URL = ACIS_API_URL;
+
+// ─── ACIS 산식 (ACIS 프론트엔드와 동일) ─────────────────────────────────────
+const BASE_SHFE = 25250; // 2026 New Normal 기준 SHFE (CNY/MT)
+
+// RPCI = (SHFE CNY/MT × CNY/KRW + 해상운임) × (1 + 관세율 + 부대비용율)
+function calcRPCI(shfeCny: number, cnyKrw: number, tariff = 0.05, misc = 0.03): number {
+  const shipping = 55000; // KRW/MT
+  return Math.round((shfeCny * cnyKrw + shipping) * (1 + tariff + misc));
+}
+
+function movingAvg(arr: number[], n: number): number {
+  const slice = arr.slice(-n);
+  if (slice.length === 0) return 0;
+  return slice.reduce((a, b) => a + b, 0) / slice.length;
+}
+
+function ymdToISO(t: string): string {
+  return `${t.slice(0, 4)}-${t.slice(4, 6)}-${t.slice(6, 8)}`;
+}
 
 // ─── Mock 응답 (Phase 3 이전) ────────────────────────────────────────────────
 function mockSignal(): ACISSignalResponse {
@@ -48,15 +71,97 @@ function mockSignal(): ACISSignalResponse {
   };
 }
 
-// ─── 실제 호출 (Phase 3+) ────────────────────────────────────────────────────
+// ─── 실제 호출 — ACIS 원천 데이터 API + 동일 산식으로 신호 계산 ───────────────
+// ACIS 는 신호 JSON 을 직접 노출하지 않고 /api/aluminum·/api/lme·/api/rates 만
+// 제공하므로, RPCI/SPI/ERI/신호를 여기서 ACIS 프론트엔드와 동일하게 산출한다.
+interface SeriesPoint { date: string; price: number }
+interface RateRow { TIME: string; DATA_VALUE: string }
+
+function buildRecommendation(
+  signal: ACISSignal, devPct: number, eri: number,
+): string {
+  const dev = devPct.toFixed(1);
+  switch (signal) {
+    case 'BUY':
+      return `RPCI가 60일 평균 대비 ${dev}% — 매수 우위 구간. 환율도 유리(ERI ${eri.toFixed(2)}).`;
+    case 'FX-WAIT':
+      return `가격은 매수 구간이나 환율 부담(ERI ${eri.toFixed(2)} ≥ 1.02). 환율 안정 시 진입 권장.`;
+    case 'AVOID':
+      return `RPCI가 60일 평균 대비 +${dev}% — 고점 부담. 신규 발주 자제 권장.`;
+    default:
+      return `RPCI가 60일 평균 ±3% 이내(${dev}%) — 관망 구간.`;
+  }
+}
+
 async function fetchACISSignal(): Promise<ACISSignalResponse> {
   try {
-    const res = await fetch(`${ACIS_API_URL}/api/signal`, {
-      next: { revalidate: 600 }, // 10 분 캐시
-    });
-    if (!res.ok) throw new Error(`ACIS ${res.status}`);
-    const data = await res.json();
-    return { ...data, is_mock: false, fetched_at: new Date().toISOString() };
+    const opts = { next: { revalidate: 600 } }; // 10분 캐시
+    const [alRes, lmeRes, ratesRes] = await Promise.all([
+      fetch(`${ACIS_API_URL}/api/aluminum`, opts),
+      fetch(`${ACIS_API_URL}/api/lme`, opts),
+      fetch(`${ACIS_API_URL}/api/rates`, opts),
+    ]);
+    if (!alRes.ok || !lmeRes.ok || !ratesRes.ok) {
+      throw new Error(`ACIS endpoints ${alRes.status}/${lmeRes.status}/${ratesRes.status}`);
+    }
+
+    const al = ((await alRes.json()).data ?? []) as SeriesPoint[];
+    const lme = ((await lmeRes.json()).data ?? []) as SeriesPoint[];
+    const rates = (await ratesRes.json()) as {
+      cny: RateRow[]; usd: RateRow[]; currentCny?: number; currentUsd?: number;
+    };
+    if (!al.length || !lme.length || !rates.cny?.length) {
+      throw new Error('ACIS empty data');
+    }
+
+    const cnySeries = rates.cny
+      .map((r) => ({ date: ymdToISO(r.TIME), value: parseFloat(r.DATA_VALUE) }))
+      .filter((r) => !Number.isNaN(r.value))
+      .sort((a, b) => a.date.localeCompare(b.date));
+
+    const curCny = rates.currentCny ?? cnySeries[cnySeries.length - 1].value;
+    const curUsd = rates.currentUsd
+      ?? parseFloat(rates.usd[rates.usd.length - 1]?.DATA_VALUE ?? '0');
+
+    // RPCI 시계열 — 알루미늄 날짜에 CNY/KRW 를 forward-fill 정렬
+    const alSorted = [...al].sort((a, b) => a.date.localeCompare(b.date));
+    let ci = 0;
+    const rpciSeries: number[] = [];
+    for (const p of alSorted) {
+      while (ci + 1 < cnySeries.length && cnySeries[ci + 1].date <= p.date) ci++;
+      const cny = cnySeries[Math.min(ci, cnySeries.length - 1)]?.value ?? curCny;
+      rpciSeries.push(calcRPCI(p.price, cny));
+    }
+
+    const currentRPCI = rpciSeries[rpciSeries.length - 1];
+    const ma60 = movingAvg(rpciSeries, 60);
+
+    const baseRpci = calcRPCI(BASE_SHFE, curCny);
+    const spi = baseRpci > 0 ? currentRPCI / baseRpci : 1;
+    const cnyAvg90 = movingAvg(cnySeries.map((c) => c.value), 90);
+    const eri = cnyAvg90 > 0 ? curCny / cnyAvg90 : 1;
+
+    // 신호: RPCI vs MA60 ±3%, 매수권이나 환율 불리(ERI≥1.02)면 FX-WAIT
+    let signal: ACISSignal;
+    if (ma60 > 0 && currentRPCI > ma60 * 1.03) signal = 'AVOID';
+    else if (ma60 > 0 && currentRPCI < ma60 * 0.97) signal = eri >= 1.02 ? 'FX-WAIT' : 'BUY';
+    else signal = 'HOLD';
+
+    const devPct = ma60 > 0 ? (currentRPCI / ma60 - 1) * 100 : 0;
+
+    return {
+      signal,
+      spi: Math.round(spi * 1000) / 10,   // 비율 → 지수(×100, 소수1)
+      eri: Math.round(eri * 100) / 100,
+      lme_price: lme[lme.length - 1].price,
+      shfe_price: alSorted[alSorted.length - 1].price,
+      cny_krw: curCny,
+      usd_krw: curUsd,
+      rpci: currentRPCI,
+      recommendation: buildRecommendation(signal, devPct, eri),
+      is_mock: false,
+      fetched_at: new Date().toISOString(),
+    };
   } catch (err) {
     console.error('[ACIS] signal fetch failed, falling back to mock:', err);
     return { ...mockSignal(), is_mock: true };

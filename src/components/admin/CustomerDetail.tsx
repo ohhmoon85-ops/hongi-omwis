@@ -29,7 +29,7 @@ export function CustomerDetail({ customerId }: Props) {
   if (!loaded) return <div className="text-sm text-gray-500">불러오는 중...</div>;
   if (!customer) {
     return (
-      <Card className="bg-[#171b26] border-[#1f2433] max-w-3xl">
+      <Card className="bg-gradient-to-b from-[#181c28] to-[#13161f] border-white/[0.06] max-w-3xl">
         <CardContent className="py-12 text-center">
           <AlertCircle className="w-8 h-8 mx-auto text-red-400 mb-2" />
           <div className="text-sm text-gray-400">존재하지 않는 거래처입니다.</div>
@@ -77,7 +77,7 @@ export function CustomerDetail({ customerId }: Props) {
       </header>
 
       {/* 주문 이력 요약 */}
-      <Card className="bg-[#171b26] border-[#1f2433] text-white max-w-5xl">
+      <Card className="bg-gradient-to-b from-[#181c28] to-[#13161f] border-white/[0.06] text-white max-w-5xl">
         <CardHeader>
           <CardTitle className="text-base text-gray-200">
             주문 이력 ({orders.length}건)

@@ -90,7 +90,7 @@ export function DeliveryList() {
       </div>
 
       {isDevMode ? (
-        <Card className="bg-[#171b26] border-[#1f2433]">
+        <Card className="bg-gradient-to-b from-[#181c28] to-[#13161f] border-white/[0.06]">
           <CardContent className="py-12 text-center text-sm text-amber-400">
             🛠️ 개발 모드 — 배송 데이터는 Supabase 연결 시 표시됩니다.
           </CardContent>
@@ -98,7 +98,7 @@ export function DeliveryList() {
       ) : !loaded ? (
         <div className="text-sm text-gray-500">불러오는 중...</div>
       ) : filtered.length === 0 ? (
-        <Card className="bg-[#171b26] border-[#1f2433]">
+        <Card className="bg-gradient-to-b from-[#181c28] to-[#13161f] border-white/[0.06]">
           <CardContent className="py-12 text-center text-sm text-gray-500">
             해당 상태의 배송 건이 없습니다.
           </CardContent>
@@ -108,7 +108,7 @@ export function DeliveryList() {
           {filtered.map((d) => {
             const badge = DELIVERY_STATUS_BADGE[d.status];
             return (
-              <Card key={d.id} className="bg-[#171b26] border-[#1f2433] text-white">
+              <Card key={d.id} className="bg-gradient-to-b from-[#181c28] to-[#13161f] border-white/[0.06] text-white">
                 <CardContent className="py-4">
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div className="flex-1 min-w-[240px]">

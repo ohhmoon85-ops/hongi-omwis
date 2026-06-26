@@ -42,7 +42,7 @@ export function InventoryManager() {
 
   if (isDevMode) {
     return (
-      <Card className="bg-[#171b26] border-[#1f2433]">
+      <Card className="bg-gradient-to-b from-[#181c28] to-[#13161f] border-white/[0.06]">
         <CardContent className="py-12 text-center text-sm text-amber-400">
           🛠️ 개발 모드 — 재고 데이터는 Supabase 연결 시 표시됩니다.
         </CardContent>
@@ -89,7 +89,7 @@ export function InventoryManager() {
           <section>
             <h2 className="text-sm font-semibold text-gray-300 mb-2">재고 Lot 목록</h2>
             {lots.length === 0 ? (
-              <Card className="bg-[#171b26] border-[#1f2433]">
+              <Card className="bg-gradient-to-b from-[#181c28] to-[#13161f] border-white/[0.06]">
                 <CardContent className="py-8 text-center text-sm text-gray-500">
                   등록된 재고 lot 이 없습니다. 위에서 입고를 등록하세요.
                 </CardContent>
@@ -106,7 +106,7 @@ export function InventoryManager() {
           {/* 최근 입출고 이력 */}
           <section>
             <h2 className="text-sm font-semibold text-gray-300 mb-2">최근 입출고 이력</h2>
-            <Card className="bg-[#171b26] border-[#1f2433]">
+            <Card className="bg-gradient-to-b from-[#181c28] to-[#13161f] border-white/[0.06]">
               <CardContent className="py-3">
                 {logs.length === 0 ? (
                   <div className="text-sm text-gray-500 py-4 text-center">이력이 없습니다.</div>
@@ -246,7 +246,7 @@ function InboundForm({ products, onDone }: { products: Product[]; onDone: () => 
   }
 
   return (
-    <Card className="bg-[#171b26] border-[#1f2433] text-white">
+    <Card className="bg-gradient-to-b from-[#181c28] to-[#13161f] border-white/[0.06] text-white">
       <CardHeader className="pb-2">
         <CardTitle className="text-base text-gray-200">입고 등록 (신규 Lot)</CardTitle>
       </CardHeader>
@@ -326,7 +326,7 @@ function LotRow({ lot, onSaved }: { lot: InventoryLot; onSaved: () => void }) {
     : lot.status === 'reserved' ? 'text-yellow-300' : 'text-gray-500';
 
   return (
-    <Card className="bg-[#171b26] border-[#1f2433] text-white">
+    <Card className="bg-gradient-to-b from-[#181c28] to-[#13161f] border-white/[0.06] text-white">
       <CardContent className="py-3">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex-1 min-w-[240px]">
