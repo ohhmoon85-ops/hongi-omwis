@@ -159,7 +159,10 @@ export function ChairmanCharts() {
                     backgroundColor: '#13161f', border: '1px solid #2a2f3e',
                     borderRadius: 8, fontSize: 12,
                   }}
-                  formatter={(v: number, name) => name === 'revenue' ? formatKRW(v) : `${v}건`}
+                  formatter={(value, name) => {
+                    const v = Number(value);
+                    return name === 'revenue' ? formatKRW(v) : `${v}건`;
+                  }}
                   labelStyle={{ color: '#c8962e' }}
                 />
                 <Area type="monotone" dataKey="revenue" stroke="#c8962e" strokeWidth={2}
@@ -195,7 +198,7 @@ export function ChairmanCharts() {
                     backgroundColor: '#13161f', border: '1px solid #2a2f3e',
                     borderRadius: 8, fontSize: 12,
                   }}
-                  formatter={(v: number) => `${v}건`}
+                  formatter={(value) => `${Number(value)}건`}
                 />
                 <Legend
                   iconType="circle"
@@ -232,7 +235,7 @@ export function ChairmanCharts() {
                     backgroundColor: '#13161f', border: '1px solid #2a2f3e',
                     borderRadius: 8, fontSize: 12,
                   }}
-                  formatter={(v: number) => formatKRW(v)}
+                  formatter={(value) => formatKRW(Number(value))}
                   labelStyle={{ color: '#c8962e' }}
                 />
                 <Bar dataKey="amount" fill="#c8962e" radius={[0, 4, 4, 0]} name="매출" />
