@@ -38,16 +38,16 @@ export async function GET() {
   const profileMap = new Map<string, {
     role: string; name: string | null; customer_id: string | null; company_name: string | null;
   }>();
-  for (const p of (profiles ?? []) as Array<{
-    id: string; role: string; name: string | null;
-    customer_id: string | null;
-    customers: { company_name: string } | null;
-  }>) {
+  // Supabase join 결과는 1:1 관계라도 타입 시스템이 array 로 추론 — any 캐스팅
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  for (const p of (profiles ?? []) as any[]) {
+    // customers 가 array 또는 object 어느 형태로 와도 안전하게 추출
+    const customers = Array.isArray(p.customers) ? p.customers[0] : p.customers;
     profileMap.set(p.id, {
       role: p.role,
       name: p.name,
       customer_id: p.customer_id,
-      company_name: p.customers?.company_name ?? null,
+      company_name: customers?.company_name ?? null,
     });
   }
 
