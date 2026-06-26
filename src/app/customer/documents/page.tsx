@@ -8,7 +8,7 @@ import { createClient } from '@/lib/supabase/server';
 import { isDevMode } from '@/lib/env';
 import { formatKRW, formatDate } from '@/lib/utils';
 import { Card, CardContent } from '@/components/ui/card';
-import { FileText, Download, AlertCircle } from 'lucide-react';
+import { Download, AlertCircle } from 'lucide-react';
 
 interface InvoiceRow {
   id: string;

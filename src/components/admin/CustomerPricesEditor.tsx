@@ -52,7 +52,8 @@ export function CustomerPricesEditor({ customerId }: Props) {
     setLoaded(true);
   }
 
-  useEffect(() => { load(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [customerId]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { load(); }, [customerId]);
 
   function startEdit(product: Product, existing?: CustomerPrice) {
     setEditing({
