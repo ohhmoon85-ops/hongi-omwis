@@ -155,25 +155,49 @@ html.omwis-light .card-elevated {
     0 4px 14px rgba(15, 23, 42, 0.06) !important;
 }
 
-/* 텍스트 색상 */
-html.omwis-light .text-white,
-html.omwis-light .text-gray-100 {
+/* 텍스트 색상 — 라이트 변환된 컨테이너 "안" 의 다크 톤 텍스트만 어둡게.
+ * 다크 버튼 (bg-[#1a3d6b] 등) 내부의 text-white 는 그대로 흰색 유지하도록
+ * 뒤에서 "복원" 규칙으로 덮어쓰기. */
+html.omwis-light .bg-app .text-white,
+html.omwis-light .bg-app-light .text-white,
+html.omwis-light .bg-\[\#0f1117\] .text-white,
+html.omwis-light .bg-\[\#0b0d13\]\/80 .text-white,
+html.omwis-light .bg-\[\#171b26\] .text-white,
+html.omwis-light .bg-\[\#13161f\] .text-white,
+html.omwis-light .bg-\[\#181c28\] .text-white,
+html.omwis-light .bg-\[\#141823\]\/90 .text-white,
+html.omwis-light [class*="from-[#181c28]"] .text-white {
   color: #111827 !important;
 }
-html.omwis-light .text-gray-200 {
+html.omwis-light .bg-app .text-gray-100,
+html.omwis-light .bg-\[\#171b26\] .text-gray-100,
+html.omwis-light .bg-\[\#13161f\] .text-gray-100,
+html.omwis-light [class*="from-[#181c28]"] .text-gray-100 {
   color: #1f2937 !important;
 }
-html.omwis-light .text-gray-300 {
+html.omwis-light .bg-app .text-gray-200,
+html.omwis-light .bg-\[\#171b26\] .text-gray-200,
+html.omwis-light .bg-\[\#13161f\] .text-gray-200,
+html.omwis-light [class*="from-[#181c28]"] .text-gray-200 {
+  color: #1f2937 !important;
+}
+html.omwis-light .bg-app .text-gray-300,
+html.omwis-light .bg-\[\#171b26\] .text-gray-300,
+html.omwis-light .bg-\[\#13161f\] .text-gray-300,
+html.omwis-light [class*="from-[#181c28]"] .text-gray-300 {
   color: #374151 !important;
 }
-html.omwis-light .text-gray-400 {
-  color: #4b5563 !important;
-}
-html.omwis-light .text-gray-500 {
+html.omwis-light .bg-app .text-gray-400,
+html.omwis-light .bg-\[\#171b26\] .text-gray-400,
+html.omwis-light .bg-\[\#13161f\] .text-gray-400,
+html.omwis-light [class*="from-[#181c28]"] .text-gray-400 {
   color: #6b7280 !important;
 }
-html.omwis-light .text-gray-600 {
-  color: #4b5563 !important;
+html.omwis-light .bg-app .text-gray-500,
+html.omwis-light .bg-\[\#171b26\] .text-gray-500,
+html.omwis-light .bg-\[\#13161f\] .text-gray-500,
+html.omwis-light [class*="from-[#181c28]"] .text-gray-500 {
+  color: #9ca3af !important;
 }
 
 /* 경계선 */
@@ -222,4 +246,60 @@ html.omwis-light ::-webkit-scrollbar-thumb {
 }
 html.omwis-light ::-webkit-scrollbar-thumb:hover {
   background: rgba(200, 150, 46, 0.35);
+}
+
+/* ============================================================================
+ * 라이트 모드에서도 여전히 어두운 배경을 유지하는 요소들 (버튼·배지·강조 카드)
+ * 안의 흰 텍스트는 그대로 흰색으로 유지 — 위 규칙들을 덮어쓰기.
+ * 같은 요소 (compound, 공백 없음) + 자손 (descendant, 공백 있음) 둘 다 처리.
+ * ============================================================================ */
+
+/* 메인 다크 블루 — 필터 버튼·신규 거래처·재고 실사 등 */
+html.omwis-light .bg-\[\#1a3d6b\],
+html.omwis-light .bg-\[\#1a3d6b\] *,
+html.omwis-light .bg-\[\#235490\],
+html.omwis-light .bg-\[\#235490\] *,
+html.omwis-light [class*="from-[#1a3d6b]"],
+html.omwis-light [class*="from-[#1a3d6b]"] *,
+html.omwis-light [class*="to-[#2a5a96]"],
+html.omwis-light [class*="to-[#2a5a96]"] * {
+  color: #ffffff !important;
+}
+
+/* 액션 버튼 컬러 (Tailwind 표준 다크 톤) */
+html.omwis-light .bg-green-600,
+html.omwis-light .bg-green-600 *,
+html.omwis-light .bg-green-700,
+html.omwis-light .bg-green-700 *,
+html.omwis-light .bg-blue-600,
+html.omwis-light .bg-blue-600 *,
+html.omwis-light .bg-blue-700,
+html.omwis-light .bg-blue-700 *,
+html.omwis-light .bg-orange-600,
+html.omwis-light .bg-orange-600 *,
+html.omwis-light .bg-orange-700,
+html.omwis-light .bg-orange-700 *,
+html.omwis-light .bg-red-600,
+html.omwis-light .bg-red-600 *,
+html.omwis-light .bg-red-700,
+html.omwis-light .bg-red-700 *,
+html.omwis-light .bg-amber-600,
+html.omwis-light .bg-amber-600 *,
+html.omwis-light .bg-purple-600,
+html.omwis-light .bg-purple-600 *,
+html.omwis-light .bg-\[\#c8962e\],
+html.omwis-light .bg-\[\#c8962e\] *,
+html.omwis-light .bg-\[\#b3851f\],
+html.omwis-light .bg-\[\#b3851f\] * {
+  color: #ffffff !important;
+}
+
+/* 어두운 회색 배지 (역할 "없음" 등) — 텍스트 밝게 유지 */
+html.omwis-light .bg-gray-600,
+html.omwis-light .bg-gray-600 *,
+html.omwis-light .bg-gray-700,
+html.omwis-light .bg-gray-700 *,
+html.omwis-light .bg-gray-800,
+html.omwis-light .bg-gray-800 * {
+  color: #e5e7eb !important;
 }
