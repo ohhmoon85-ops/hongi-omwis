@@ -30,8 +30,13 @@ export async function POST(req: NextRequest) {
   }
 
   const { data: profile } = await supabase
-    .from('user_profiles').select('customer_id').eq('id', user.id).single();
-  if (!profile?.customer_id) {
+    .from('user_profiles').select('role, customer_id').eq('id', user.id).single();
+  // 명시적 role 검증: customer 만 자사 주문 생성 가능
+  // (createAdminClient 가 service_role 로 RLS 우회 후 INSERT 하므로 API 단에서 보강)
+  if (!profile || profile.role !== 'customer') {
+    return NextResponse.json({ error: 'customer role required' }, { status: 403 });
+  }
+  if (!profile.customer_id) {
     return NextResponse.json({ error: 'no customer profile' }, { status: 403 });
   }
 
