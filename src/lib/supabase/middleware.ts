@@ -10,7 +10,6 @@ const ROLE_ROUTES: Record<UserRole, string[]> = {
   chairman:    ['/chairman', '/account', '/admin/acis'],
   super_admin: ['/admin', '/chairman', '/account'],
   admin:       ['/admin', '/account'],
-  driver:      ['/admin/deliveries', '/account'],
   customer:    ['/customer', '/account'],
 };
 
@@ -18,7 +17,6 @@ const ROLE_HOME: Record<UserRole, string> = {
   chairman:    '/chairman/monitor',
   super_admin: '/admin/dashboard',
   admin:       '/admin/dashboard',
-  driver:      '/admin/deliveries',
   customer:    '/customer/order',
 };
 

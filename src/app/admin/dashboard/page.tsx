@@ -9,8 +9,8 @@ export const dynamic = 'force-dynamic';
 // ─── KPI 집계 (실 Supabase) ──────────────────────────────────────────────
 interface DashboardKPIs {
   todayOrders: number | null;
-  deliveriesInProgress: number | null;
-  deliveriesDone: number | null;
+  ordersInProgress: number | null;  // 처리 중 (approved+processing)
+  shippedThisMonth: number | null;  // 이번 달 출고 완료 건수
   monthRevenue: number | null;
   stockAlerts: number | null;
   receivables: number | null;
@@ -31,7 +31,7 @@ function kstBoundaries() {
 
 async function getKPIs(): Promise<DashboardKPIs> {
   const empty: DashboardKPIs = {
-    todayOrders: null, deliveriesInProgress: null, deliveriesDone: null,
+    todayOrders: null, ordersInProgress: null, shippedThisMonth: null,
     monthRevenue: null, stockAlerts: null, receivables: null,
   };
   if (isDevMode) return empty;
@@ -40,24 +40,26 @@ async function getKPIs(): Promise<DashboardKPIs> {
     const supabase = createClient();
     const { monthStart, todayStart } = kstBoundaries();
 
-    const [ordersRes, deliveriesRes, customersRes, inventoryRes, safetyRes] =
+    // 이번 달 주문(전체) + 진행 중 + 출고 완료 + 미수금 + 재고 경보
+    const [ordersMonthRes, ordersOpenRes, customersRes, inventoryRes, safetyRes] =
       await Promise.all([
-        supabase.from('orders').select('total_amount, created_at').gte('created_at', monthStart),
-        supabase.from('deliveries').select('status'),
+        supabase.from('orders')
+          .select('total_amount, status, created_at')
+          .gte('created_at', monthStart),
+        // 처리 중 카운트는 created_at 무관 — 전체 미완료 잔량 표시
+        supabase.from('orders')
+          .select('id', { count: 'exact', head: true })
+          .in('status', ['approved', 'processing']),
         supabase.from('customers').select('current_balance'),
         supabase.from('inventory').select('product_id, quantity').eq('status', 'active'),
         supabase.from('safety_stock').select('product_id, min_quantity'),
       ]);
 
-    const orders = ordersRes.data ?? [];
-    const todayOrders = orders.filter((o) => o.created_at >= todayStart).length;
-    const monthRevenue = orders.reduce((s, o) => s + (o.total_amount ?? 0), 0);
-
-    const deliveries = deliveriesRes.data ?? [];
-    const deliveriesInProgress = deliveries.filter(
-      (d) => d.status === 'scheduled' || d.status === 'departed',
-    ).length;
-    const deliveriesDone = deliveries.filter((d) => d.status === 'delivered').length;
+    const ordersMonth = ordersMonthRes.data ?? [];
+    const todayOrders = ordersMonth.filter((o) => o.created_at >= todayStart).length;
+    const monthRevenue = ordersMonth.reduce((s, o) => s + (o.total_amount ?? 0), 0);
+    const shippedThisMonth = ordersMonth.filter((o) => o.status === 'shipped').length;
+    const ordersInProgress = ordersOpenRes.count ?? 0;
 
     const receivables = (customersRes.data ?? []).reduce(
       (s, c) => s + (c.current_balance ?? 0), 0,
@@ -76,7 +78,7 @@ async function getKPIs(): Promise<DashboardKPIs> {
     ).length;
 
     return {
-      todayOrders, deliveriesInProgress, deliveriesDone,
+      todayOrders, ordersInProgress, shippedThisMonth,
       monthRevenue, stockAlerts, receivables,
     };
   } catch (err) {
@@ -110,10 +112,12 @@ export default async function AdminDashboardPage() {
       value: kpi.todayOrders == null ? '-' : `${kpi.todayOrders}건`,
     },
     {
-      icon: '🚛', title: '배송 현황', color: 'text-green-400', desc: '진행 / 완료',
-      value: kpi.deliveriesInProgress == null
-        ? '-'
-        : `${kpi.deliveriesInProgress} / ${kpi.deliveriesDone}`,
+      icon: '⚙️', title: '처리 중 주문', color: 'text-purple-400', desc: '승인 + 처리중',
+      value: kpi.ordersInProgress == null ? '-' : `${kpi.ordersInProgress}건`,
+    },
+    {
+      icon: '🚛', title: '이번 달 출고', color: 'text-green-400', desc: '월 누계',
+      value: kpi.shippedThisMonth == null ? '-' : `${kpi.shippedThisMonth}건`,
     },
     {
       icon: '📊', title: '이번 달 매출', color: 'text-[#c8962e]', desc: '월 누계',
@@ -162,7 +166,7 @@ export default async function AdminDashboardPage() {
       <footer className="mt-8 text-xs text-gray-500">
         {isDevMode
           ? '개발 모드 — KPI 는 Supabase 연결 시 실데이터로 표시됩니다.'
-          : 'KPI 실데이터 연결됨 — 주문·배송·재고·미수금 실시간 집계'}
+          : 'KPI 실데이터 연결됨 — 주문·재고·미수금 실시간 집계'}
       </footer>
     </div>
   );

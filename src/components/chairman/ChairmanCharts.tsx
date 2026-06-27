@@ -252,11 +252,10 @@ const STATUS_COLOR: Record<OrderStatus, string> = {
   pending:    '#6b7280',
   approved:   '#3b82f6',
   processing: '#8b5cf6',
-  ready:      '#eab308',
-  shipping:   '#f97316',
-  delivered:  '#22c55e',
+  shipped:    '#22c55e',
   cancelled:  '#4b5563',
   rejected:   '#ef4444',
+  returned:   '#f97316',
 };
 
 // Avoid unused warning if formatDate not used (silent helper for typing)

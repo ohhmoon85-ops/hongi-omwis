@@ -68,11 +68,11 @@ async function aggregate(): Promise<WeeklyData> {
     .sort((a, b) => b.amount - a.amount)
     .slice(0, 3);
 
-  // 2) 진행 중 배송 (지금 시점에서 shipping/processing/ready)
+  // 2) 처리 중 주문 (지금 시점에서 approved/processing) — 출고 전 잔량
   const { count: shippingCount } = await supabase
     .from('orders')
     .select('id', { count: 'exact', head: true })
-    .in('status', ['processing', 'ready', 'shipping']);
+    .in('status', ['approved', 'processing']);
 
   // 3) 총 미수금
   const { data: customers } = await supabase
@@ -133,7 +133,7 @@ function buildEmailHTML(d: WeeklyData): string {
       <tr><td style="padding:8px;border-bottom:1px solid #eee;">💰 매출</td>
           <td style="padding:8px;border-bottom:1px solid #eee;text-align:right;color:#c8962e;font-weight:bold;">
             ${formatKRW(d.revenue)}</td></tr>
-      <tr><td style="padding:8px;border-bottom:1px solid #eee;">🚛 진행 중 배송</td>
+      <tr><td style="padding:8px;border-bottom:1px solid #eee;">⚙️ 처리 중 주문</td>
           <td style="padding:8px;border-bottom:1px solid #eee;text-align:right;">${d.shipping_count}건</td></tr>
       <tr><td style="padding:8px;border-bottom:1px solid #eee;">📒 총 미수금</td>
           <td style="padding:8px;border-bottom:1px solid #eee;text-align:right;">${formatKRW(d.receivable)}</td></tr>

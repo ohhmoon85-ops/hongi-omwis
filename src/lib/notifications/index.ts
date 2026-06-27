@@ -11,8 +11,8 @@ export type NotificationEvent =
   | 'order_created'      // 거래처 주문 접수 → 관리자
   | 'order_approved'     // 관리자 승인 → 거래처
   | 'order_rejected'     // 관리자 거절 → 거래처
-  | 'delivery_depart'    // 배송 출발 → 거래처
-  | 'delivery_done'      // 배송 완료 → 거래처
+  | 'order_shipped'      // 출고(공장 출발) → 거래처
+  | 'order_returned'     // 반품 발생 → 관리자
   | 'stock_alert'        // 안전재고 미달 → 관리자
   | 'acis_buy_signal'    // ACIS BUY 신호 → 관리자
   | 'credit_exceeded'    // 신용 한도 초과 → 관리자
@@ -57,15 +57,20 @@ const EVENT_CONFIG: Record<NotificationEvent, EventConfig> = {
     subject: (v) => `[(주)홍지] 주문 ${v.order_number} 처리 안내`,
     body: (v) => `<p>주문 ${v.order_number} 이(가) 다음 사유로 처리되지 못했습니다: ${v.reason}</p>`,
   },
-  delivery_depart: {
-    channel: 'kakao',
-    templateCode: 'DELIVERY_DEPART',
-  },
-  delivery_done: {
+  order_shipped: {
     channel: 'both',
-    templateCode: 'DELIVERY_DONE',
-    subject: (v) => `[(주)홍지] 주문 ${v.order_number} 배송 완료`,
-    body: (v) => `<p>주문 ${v.order_number} 이(가) ${v.completed_at} 에 배송 완료되었습니다.</p>`,
+    templateCode: 'ORDER_SHIPPED',
+    subject: (v) => `[(주)홍지] 주문 ${v.order_number} 출고 완료`,
+    body: (v) => `<p>주문 ${v.order_number} 이(가) 공장에서 출고되었습니다. (${v.shipped_at})</p>`,
+  },
+  order_returned: {
+    channel: 'both',
+    templateCode: 'ORDER_RETURNED',
+    subject: (v) => `[OMWIS] 반품 접수 — 주문 ${v.order_number}`,
+    body: (v) =>
+      `<p>거래처 ${v.company_name} 의 주문 ${v.order_number} 에 반품이 접수되었습니다.</p>` +
+      `<p>사유: ${v.reason}</p>` +
+      `<p>재고 복원: ${v.restock === 'yes' ? '예 (정상품)' : '아니오 (폐기)'}</p>`,
   },
   stock_alert: {
     channel: 'kakao',
@@ -122,14 +127,14 @@ async function logNotification(
 function recipientTypeFor(event: NotificationEvent): 'chairman' | 'admin' | 'customer' | null {
   switch (event) {
     case 'order_created':
+    case 'order_returned':
     case 'stock_alert':
     case 'acis_buy_signal':
     case 'credit_exceeded':
       return 'admin';
     case 'order_approved':
     case 'order_rejected':
-    case 'delivery_depart':
-    case 'delivery_done':
+    case 'order_shipped':
       return 'customer';
     case 'weekly_summary':
       return 'chairman';

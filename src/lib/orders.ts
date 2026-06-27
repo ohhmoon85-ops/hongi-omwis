@@ -2,6 +2,10 @@
 // 운영 모드 주문 데이터 레이어 — Supabase 브라우저 클라이언트 (RLS 적용)
 // 클라이언트 컴포넌트에서 dev-orders(localStorage) 대신 사용.
 // UI 는 기존 DevOrder 뷰 모델을 그대로 렌더하므로 같은 모양으로 매핑한다.
+// ----------------------------------------------------------------------------
+// 2026-06-27 배송 모델 단순화:
+//   - 'shipping' / 'delivered' 폐기 → 'shipped' (출고 = 완료) 한 단계로 통합
+//   - 출고 처리 시: 세금계산서 확인 → 재고 차감 → 상태 'shipped' → 알림 발송
 // ============================================================================
 
 import { createClient } from '@/lib/supabase/client';
@@ -50,76 +54,40 @@ export async function fetchOrders(): Promise<DevOrder[]> {
   return (data ?? []).map(mapOrderRow);
 }
 
-// 주문 상태 변경 (관리자 승인/거절/진행) — RLS admin_all_orders 로 보호
+// 주문 상태 변경 (관리자 승인/거절/진행/취소) — RLS admin_all_orders 로 보호
+//
+// 'shipped' 진입은 별도 서버 API 경유 (재고 차감 + 알림을 트랜잭션 보장):
+//   → POST /api/orders/ship
+// 'returned' 진입도 별도 서버 API 경유:
+//   → POST /api/returns (returnOrder 함수 참조)
 export async function updateOrderStatus(
   orderId: string,
   status: OrderStatus,
   patch?: { confirmed_date?: string; rejection_reason?: string },
 ): Promise<void> {
-  const supabase = createClient();
-
-  // 배송 시작 전 게이트: 세금계산서 발행 + FIFO 출고
-  if (status === 'shipping') {
-    // 1) 세금계산서 발행 여부
-    const { data: inv } = await supabase
-      .from('invoices')
-      .select('id')
-      .eq('order_id', orderId)
-      .in('status', ['issued', 'sent'])
-      .limit(1);
-    if (!inv || inv.length === 0) {
-      throw new Error('세금계산서 발행 후 배송을 시작할 수 있습니다.');
+  // 출고 처리는 서버 API 경유 — 세금계산서 게이트 + FIFO 차감 + 알림 통합
+  if (status === 'shipped') {
+    const res = await fetch('/api/orders/ship', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ order_id: orderId }),
+    });
+    if (!res.ok) {
+      const { readApiError } = await import('@/lib/api-error');
+      throw new Error(await readApiError(res));
     }
-
-    // 2) 이미 출고 처리되어 있는지 확인 — 중복 차감 방지
-    const { data: already } = await supabase
-      .from('inventory_logs')
-      .select('id')
-      .eq('order_id', orderId)
-      .eq('log_type', 'out')
-      .limit(1);
-
-    // 3) 미출고 상태면 FIFO lot 차감 (Postgres 함수가 트랜잭션 보장)
-    if (!already || already.length === 0) {
-      const { error: dErr } = await supabase.rpc('dispatch_order', { p_order_id: orderId });
-      if (dErr) throw new Error(dErr.message);
-    }
+    return;
   }
 
+  const supabase = createClient();
   const { error } = await supabase
     .from('orders')
     .update({ status, ...patch, updated_at: new Date().toISOString() })
     .eq('id', orderId);
   if (error) throw new Error(error.message);
-
-  // '배송 시작' 시 배송 레코드 자동 생성 (없을 때만)
-  if (status === 'shipping') await ensureDelivery(orderId);
 }
 
-// 주문에 연결된 배송 레코드가 없으면 생성 — 거래처 배송지·확정 납기 복사
-async function ensureDelivery(orderId: string): Promise<void> {
-  const supabase = createClient();
-  const { data: existing } = await supabase
-    .from('deliveries').select('id').eq('order_id', orderId).limit(1);
-  if (existing && existing.length > 0) return;
-
-  const { data: order } = await supabase
-    .from('orders')
-    .select('confirmed_date, requested_date, customers(delivery_address)')
-    .eq('id', orderId)
-    .single();
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const customer = (order as any)?.customers;
-  await supabase.from('deliveries').insert({
-    order_id: orderId,
-    status: 'scheduled',
-    scheduled_date: order?.confirmed_date ?? order?.requested_date ?? null,
-    delivery_address: customer?.delivery_address ?? null,
-  });
-}
-
-// 수동 출고 처리 — 상태 변경 없이 dispatch_order(FIFO 차감) 만 실행.
+// 수동 출고 — 상태 변경 없이 dispatch_order(FIFO 차감) 만 실행.
 // 사용 예: 세금계산서 발행 전 미리 출고하거나, 외상 거래 등 별도 경로.
 // 멱등: 이미 출고된 주문이면 에러 던짐 (중복 차감 방지).
 export async function dispatchOrderManually(orderId: string): Promise<void> {
@@ -177,4 +145,21 @@ export async function reorder(order: DevOrder): Promise<string> {
   }
   const data = await res.json();
   return data.order_number as string;
+}
+
+// 반품 처리 — 출고 완료 주문에 대해 반품 사유 기록 + (옵션) 재고 복원
+// 서버 API(/api/returns) 경유 — RLS · 재고 복원 트랜잭션을 서버에서 보장
+export async function returnOrder(
+  orderId: string,
+  data: { reason: string; restock: boolean; memo?: string },
+): Promise<void> {
+  const res = await fetch('/api/returns', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ order_id: orderId, ...data }),
+  });
+  if (!res.ok) {
+    const { readApiError } = await import('@/lib/api-error');
+    throw new Error(await readApiError(res));
+  }
 }
