@@ -4,10 +4,11 @@
 -- ============================================================================
 
 -- ① 사용자 프로필 (auth.users 와 1:1, role 보관)
+-- 2026-06-27: driver 역할 제거 (배송 모델 단순화 — 출고=완료).
 CREATE TABLE IF NOT EXISTS user_profiles (
   id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
   role VARCHAR(20) NOT NULL
-    CHECK (role IN ('chairman','super_admin','admin','driver','customer')),
+    CHECK (role IN ('chairman','super_admin','admin','customer')),
   name VARCHAR(100),
   customer_id UUID,
   created_at TIMESTAMPTZ DEFAULT now()
@@ -67,9 +68,12 @@ CREATE TABLE IF NOT EXISTS orders (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   order_number VARCHAR(20) UNIQUE NOT NULL,
   customer_id UUID REFERENCES customers(id),
+  -- 2026-06-27 배송 모델 단순화: 5단계 → 4단계 + returned 분기
+  --   pending → approved → processing → shipped (출고 = 완료)
+  --   분기 종결: cancelled / rejected / returned
   status VARCHAR(20) DEFAULT 'pending'
-    CHECK (status IN ('pending','approved','rejected','processing',
-                      'ready','shipping','delivered','cancelled')),
+    CHECK (status IN ('pending','approved','processing','shipped',
+                      'cancelled','rejected','returned')),
   requested_date DATE,
   confirmed_date DATE,
   total_amount INTEGER DEFAULT 0,
@@ -185,6 +189,18 @@ CREATE TABLE IF NOT EXISTS invoices (
   updated_at TIMESTAMPTZ DEFAULT now()
 );
 
+-- ⑬ 반품 이력 — 출고 완료 주문에 대한 반품 처리 (2026-06-27 추가)
+CREATE TABLE IF NOT EXISTS returns (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  order_id UUID REFERENCES orders(id) ON DELETE CASCADE,
+  reason TEXT NOT NULL,
+  restock BOOLEAN DEFAULT false,            -- true = 정상품 재고 복원 / false = 폐기
+  return_date DATE DEFAULT CURRENT_DATE,
+  memo TEXT,
+  created_by UUID REFERENCES auth.users(id),
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+
 -- ============================================================================
 -- 주문번호 자동 생성 함수
 -- ============================================================================
@@ -259,7 +275,7 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- ============================================================================
 -- Row Level Security (RLS) 정책
--- 5계층 권한: chairman / super_admin / admin / driver / customer
+-- 4계층 권한: chairman / super_admin / admin / customer
 -- ⚠️ chairman 은 SELECT 만 — INSERT/UPDATE/DELETE 정책 절대 부여 금지
 -- ============================================================================
 
@@ -344,16 +360,6 @@ DROP POLICY IF EXISTS "chair_read_deliveries" ON deliveries;
 CREATE POLICY "chair_read_deliveries" ON deliveries      FOR SELECT USING (current_role_v() = 'chairman');
 DROP POLICY IF EXISTS "chair_read_invoices"   ON invoices;
 CREATE POLICY "chair_read_invoices"   ON invoices        FOR SELECT USING (current_role_v() = 'chairman');
-
--- ─────────────────────────────────────────────────────────────────────────────
--- driver: 배송 본인 건 SELECT/UPDATE
--- ─────────────────────────────────────────────────────────────────────────────
-DROP POLICY IF EXISTS "driver_read_deliveries" ON deliveries;
-CREATE POLICY "driver_read_deliveries" ON deliveries FOR SELECT USING (current_role_v() = 'driver');
-DROP POLICY IF EXISTS "driver_update_deliveries" ON deliveries;
-CREATE POLICY "driver_update_deliveries" ON deliveries FOR UPDATE USING (current_role_v() = 'driver');
-DROP POLICY IF EXISTS "driver_read_orders" ON orders;
-CREATE POLICY "driver_read_orders" ON orders FOR SELECT USING (current_role_v() = 'driver');
 
 -- ─────────────────────────────────────────────────────────────────────────────
 -- customer: 자사 데이터만

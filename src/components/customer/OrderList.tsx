@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { RefreshCw, Copy, Truck } from 'lucide-react';
+import { RefreshCw, Copy } from 'lucide-react';
 import { loadDevOrders, saveDevOrder, generateDevOrderNumber, type DevOrder } from '@/lib/dev-orders';
 import { fetchOrders, reorder as reorderApi } from '@/lib/orders';
 import { isDevMode } from '@/lib/dev-data';
@@ -17,8 +17,8 @@ const STATUS_FILTERS: Array<{ key: OrderStatus | 'all'; label: string }> = [
   { key: 'pending',    label: '대기' },
   { key: 'approved',   label: '승인' },
   { key: 'processing', label: '처리중' },
-  { key: 'shipping',   label: '배송중' },
-  { key: 'delivered',  label: '완료' },
+  { key: 'shipped',    label: '출고완료' },
+  { key: 'returned',   label: '반품' },
   { key: 'rejected',   label: '거절' },
 ];
 
@@ -162,17 +162,8 @@ export function CustomerOrderList() {
                     </div>
                   )}
 
-                  {/* 액션 버튼들 — 배송 추적 + 재주문 */}
+                  {/* 액션 — 재주문만 (배송 추적 폐기: 출고=완료) */}
                   <div className="mt-3 pt-3 border-t border-gray-100 flex flex-wrap justify-end gap-2">
-                    {/* 배송 단계인 주문은 배송 추적 노출 */}
-                    {['approved', 'processing', 'ready', 'shipping', 'delivered'].includes(o.status) && (
-                      <Link
-                        href={`/customer/delivery/${o.id}`}
-                        className="inline-flex items-center gap-1.5 px-3 h-10 text-sm text-orange-700 border border-orange-300 rounded-lg hover:bg-orange-500 hover:text-white hover:border-orange-500 transition"
-                      >
-                        <Truck className="w-4 h-4" /> 배송 추적
-                      </Link>
-                    )}
                     <button
                       onClick={() => reorder(o)}
                       className="inline-flex items-center gap-1.5 px-3 h-10 text-sm text-[#1a3d6b] border border-[#1a3d6b]/20 rounded-lg hover:bg-[#1a3d6b] hover:text-white transition"

@@ -22,12 +22,15 @@ const EVENT_LABEL: Record<string, string> = {
   order_created:   '신규 주문',
   order_approved:  '주문 승인',
   order_rejected:  '주문 거절',
-  delivery_depart: '배송 출발',
-  delivery_done:   '배송 완료',
+  order_shipped:   '출고 완료',
+  order_returned:  '반품 접수',
   stock_alert:     '안전재고 경보',
   acis_buy_signal: 'ACIS BUY 신호',
   credit_exceeded: '신용 한도 초과',
   weekly_summary:  '주간 요약',
+  // 레거시 표시용 (DB 에 남아 있는 과거 로그용)
+  delivery_depart: '(구) 배송 출발',
+  delivery_done:   '(구) 배송 완료',
 };
 
 const STATUS_COLOR = {

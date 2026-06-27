@@ -1,13 +1,14 @@
 // ============================================================================
 // OMWIS 전역 타입 정의
+// ----------------------------------------------------------------------------
+// 2026-06-27: 배송 모델 단순화 (출고=완료) + driver 역할 제거 + 반품 추가
 // ============================================================================
 
 export type UserRole =
   | 'chairman'      // 회장 — 전사 모니터링 (Read-Only)
   | 'super_admin'   // 변지수 대표
-  | 'admin'         // 운영 관리자 (직원 ②)
-  | 'driver'        // 배송 담당 (직원 ①)
-  | 'customer';     // 거래처
+  | 'admin'         // 운영 관리자
+  | 'customer';     // 거래처 (대리점 4개사)
 
 export interface UserProfile {
   id: string;
@@ -17,16 +18,17 @@ export interface UserProfile {
   customer_id?: string | null;
 }
 
-// 주문 상태 5+3 단계
+// 주문 상태 — 4단계 + 3개 종결 상태
+//   pending → approved → processing → shipped (출고 = 완료)
+//   분기 종결: cancelled / rejected / returned
 export type OrderStatus =
   | 'pending'      // 승인 대기
   | 'approved'     // 승인 완료
+  | 'processing'   // 처리 중 (생산·출고 준비)
+  | 'shipped'      // 출고 완료 (= 끝)
+  | 'cancelled'    // 취소
   | 'rejected'     // 거절
-  | 'processing'   // 처리 중
-  | 'ready'        // 출고 준비
-  | 'shipping'     // 배송 중
-  | 'delivered'    // 배송 완료
-  | 'cancelled';   // 취소
+  | 'returned';    // 반품 (출고 후 하자 등)
 
 export type ProductType = 'raw' | 'oil' | 'water'; // 생/지용성/수용성
 
@@ -42,13 +44,13 @@ export interface Customer {
   credit_limit: number;
   current_balance: number;
   is_active: boolean;
-  former_dealer: string | null;
+  former_dealer: string | null;          // 이관된 대리점명 (히스토리 보존)
   transferred_at: string | null;
-  business_number?: string | null;  // 사업자등록번호 (세금계산서용)
-  ceo_name?: string | null;         // 대표자
-  biz_type?: string | null;         // 업태
-  biz_item?: string | null;         // 종목
-  tax_email?: string | null;        // 세금계산서 수신 이메일
+  business_number?: string | null;       // 사업자등록번호 (세금계산서용)
+  ceo_name?: string | null;              // 대표자
+  biz_type?: string | null;              // 업태
+  biz_item?: string | null;              // 종목
+  tax_email?: string | null;             // 세금계산서 수신 이메일
   memo: string | null;
   created_at: string;
   updated_at: string;
@@ -123,17 +125,15 @@ export interface InventoryRecord {
   status: 'active' | 'reserved' | 'depleted';
 }
 
-export interface Delivery {
+// 반품 이력 — 출고(shipped) 후 하자/이상 발생 시 기록
+export interface ReturnRecord {
   id: string;
   order_id: string;
-  driver_name: string | null;
-  driver_phone: string | null;
-  status: 'scheduled' | 'departed' | 'delivered' | 'failed';
-  scheduled_date: string | null;
-  departure_time: string | null;
-  arrival_time: string | null;
-  completion_photo_url: string | null;
-  delivery_address: string | null;
+  reason: string;
+  restock: boolean;          // true = 정상품, 재고 복원 / false = 폐기
+  return_date: string;
+  memo: string | null;
+  created_at: string;
 }
 
 // ----------------------------------------------------------------------------
@@ -147,11 +147,10 @@ export const ORDER_STATUS_BADGE: Record<
   pending:    { label: '승인 대기', color: 'bg-gray-100 text-gray-700' },
   approved:   { label: '승인 완료', color: 'bg-blue-100 text-blue-700' },
   processing: { label: '처리 중',   color: 'bg-purple-100 text-purple-700' },
-  ready:      { label: '출고 준비', color: 'bg-yellow-100 text-yellow-800' },
-  shipping:   { label: '배송 중',   color: 'bg-orange-100 text-orange-700' },
-  delivered:  { label: '배송 완료', color: 'bg-green-100 text-green-700' },
+  shipped:    { label: '출고 완료', color: 'bg-green-100 text-green-700' },
   cancelled:  { label: '취소',      color: 'bg-gray-100 text-gray-500' },
   rejected:   { label: '거절',      color: 'bg-red-100 text-red-700' },
+  returned:   { label: '반품',      color: 'bg-orange-100 text-orange-700' },
 };
 
 export const PRODUCT_TYPE_LABEL: Record<ProductType, string> = {
@@ -164,6 +163,5 @@ export const ROLE_LABEL: Record<UserRole, string> = {
   chairman:    '회장 (모니터링)',
   super_admin: '슈퍼 관리자',
   admin:       '운영 관리자',
-  driver:      '배송 담당',
   customer:    '거래처',
 };

@@ -93,25 +93,28 @@ export const KAKAO_TEMPLATES: Record<string, KakaoTemplate> = {
       '문의사항은 담당자에게 연락 부탁드립니다.',
     buttons: [ordersButton],
   },
-  DELIVERY_DEPART: {
-    code: 'DELIVERY_DEPART',
-    name: '배송 출발(거래처)',
+  ORDER_SHIPPED: {
+    code: 'ORDER_SHIPPED',
+    name: '출고 안내(거래처)',
     text:
-      '[(주)홍지] 배송 출발 안내\n\n' +
+      '[(주)홍지] 출고 안내\n\n' +
       '주문번호: #{order_number}\n' +
-      '주문하신 상품이 배송 출발하였습니다.\n' +
-      '배송지: #{address}',
+      '주문하신 상품이 공장에서 출고되었습니다.\n' +
+      '출고 시각: #{shipped_at}\n\n' +
+      '배송은 대리점이 진행합니다.',
     buttons: [ordersButton],
   },
-  DELIVERY_DONE: {
-    code: 'DELIVERY_DONE',
-    name: '배송 완료(거래처)',
+  ORDER_RETURNED: {
+    code: 'ORDER_RETURNED',
+    name: '반품 접수(관리자)',
     text:
-      '[(주)홍지] 배송 완료 안내\n\n' +
+      '[OMWIS] 반품 접수\n\n' +
+      '거래처: #{company_name}\n' +
       '주문번호: #{order_number}\n' +
-      '주문하신 상품이 배송 완료되었습니다.\n' +
-      '이용해 주셔서 감사합니다.',
-    buttons: [ordersButton],
+      '사유: #{reason}\n' +
+      '재고 복원: #{restock_label}\n\n' +
+      '주문 관리에서 후속 처리를 진행해 주세요.',
+    buttons: [adminOrdersButton],
   },
   STOCK_ALERT: {
     code: 'STOCK_ALERT',
@@ -131,7 +134,7 @@ export const KAKAO_TEMPLATES: Record<string, KakaoTemplate> = {
     text:
       '[(주)홍지] 주간 경영 요약 (#{period})\n\n' +
       '신규 주문: #{order_count}건 / 매출 #{revenue}원\n' +
-      '진행 중 배송: #{shipping_count}건\n' +
+      '처리 중 주문: #{shipping_count}건\n' +
       '미수금: #{receivable}원\n' +
       '재고 경보: #{low_stock_count}건\n\n' +
       '상세 내역은 모니터링 대시보드에서 확인해 주세요.',

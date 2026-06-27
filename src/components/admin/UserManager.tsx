@@ -26,7 +26,6 @@ const ROLE_BADGE: Record<string, string> = {
   chairman:    'bg-[#c8962e]/15 text-[#c8962e] border-[#c8962e]/30',
   super_admin: 'bg-blue-500/15 text-blue-300 border-blue-500/30',
   admin:       'bg-purple-500/15 text-purple-300 border-purple-500/30',
-  driver:      'bg-orange-500/15 text-orange-300 border-orange-500/30',
   customer:    'bg-green-500/15 text-green-300 border-green-500/30',
 };
 
@@ -69,8 +68,8 @@ export function UserManager() {
       <Toaster position="top-center" />
 
       {/* 통계 */}
-      <div className="grid grid-cols-2 sm:grid-cols-6 gap-2 mb-4">
-        {(['all', 'chairman', 'super_admin', 'admin', 'driver', 'customer'] as Array<UserRole | 'all'>).map((r) => (
+      <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 mb-4">
+        {(['all', 'chairman', 'super_admin', 'admin', 'customer'] as Array<UserRole | 'all'>).map((r) => (
           <button
             key={r}
             onClick={() => setFilter(r)}

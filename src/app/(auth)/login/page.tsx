@@ -15,7 +15,6 @@ const ROLE_HOME: Record<UserRole, string> = {
   chairman:    '/chairman/monitor',
   super_admin: '/admin/dashboard',
   admin:       '/admin/dashboard',
-  driver:      '/admin/deliveries',
   customer:    '/customer/order',
 };
 
@@ -150,11 +149,10 @@ function LoginForm() {
           <div className="text-[11px] text-gray-500 mb-2 text-center">
             ⚡ 빠른 역할 전환 (개발 전용)
           </div>
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-2 gap-2">
             <DevRoleButton onClick={() => devLoginAs('chairman')}    label="👑 회장" />
             <DevRoleButton onClick={() => devLoginAs('super_admin')} label="🔑 슈퍼" />
             <DevRoleButton onClick={() => devLoginAs('admin')}       label="📋 운영" />
-            <DevRoleButton onClick={() => devLoginAs('driver')}      label="🚛 배송" />
             <DevRoleButton onClick={() => devLoginAs('customer')}    label="🏢 거래처" />
           </div>
         </div>

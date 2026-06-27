@@ -19,10 +19,9 @@ interface DailyData {
   ordersNew: number;
   ordersApproved: number;
   ordersRejected: number;
+  ordersShipped: number;   // 오늘 출고 완료된 주문 건수
+  ordersReturned: number;  // 오늘 반품 처리된 주문 건수
   revenue: number;
-  // 배송
-  deliveriesDeparted: number;
-  deliveriesDone: number;
   // 입출고
   stockIn: number;        // log_type='in' 건수
   stockOut: number;       // log_type='out' 건수
@@ -60,22 +59,22 @@ async function aggregate(): Promise<DailyData> {
     .select('status, total_amount, created_at')
     .gte('created_at', startISO).lt('created_at', endISO);
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const ord = (orders ?? []) as Array<{ status: string; total_amount: number }>;
   const ordersNew = ord.length;
   const ordersApproved = ord.filter((o) => o.status === 'approved').length;
   const ordersRejected = ord.filter((o) => o.status === 'rejected').length;
   const revenue = ord.reduce((s, o) => s + (o.total_amount ?? 0), 0);
 
-  // 2) 오늘 배송 활동 (출발/완료 시각 기준)
-  const { count: departedCount } = await admin
-    .from('deliveries')
+  // 2) 오늘 출고/반품 처리된 주문 (상태 변경 시각 = updated_at 기준)
+  const { count: shippedCount } = await admin
+    .from('orders')
     .select('id', { count: 'exact', head: true })
-    .gte('departure_time', startISO).lt('departure_time', endISO);
-  const { count: deliveredCount } = await admin
-    .from('deliveries')
+    .eq('status', 'shipped')
+    .gte('updated_at', startISO).lt('updated_at', endISO);
+  const { count: returnedCount } = await admin
+    .from('returns')
     .select('id', { count: 'exact', head: true })
-    .gte('arrival_time', startISO).lt('arrival_time', endISO);
+    .gte('created_at', startISO).lt('created_at', endISO);
 
   // 3) 오늘 입출고 (inventory_logs)
   const { data: logs } = await admin
@@ -111,9 +110,10 @@ async function aggregate(): Promise<DailyData> {
 
   return {
     date,
-    ordersNew, ordersApproved, ordersRejected, revenue,
-    deliveriesDeparted: departedCount ?? 0,
-    deliveriesDone:     deliveredCount ?? 0,
+    ordersNew, ordersApproved, ordersRejected,
+    ordersShipped: shippedCount ?? 0,
+    ordersReturned: returnedCount ?? 0,
+    revenue,
     stockIn, stockOut, stockAdjust, inboundQty, outboundQty,
     lowStockCount,
     invoicesIssued: invoicesCount ?? 0,
@@ -151,12 +151,12 @@ function buildEmailHTML(d: DailyData): string {
           <td style="padding:6px;border-bottom:1px solid #eee;text-align:right;color:#c8962e;font-weight:bold;">${formatKRW(d.revenue)}</td></tr>
     </table>
 
-    <h3 style="color:#1a3d6b;margin-top:20px;">🚛 배송</h3>
+    <h3 style="color:#1a3d6b;margin-top:20px;">🚛 출고 / 반품</h3>
     <table style="border-collapse:collapse;width:100%;max-width:560px;font-family:sans-serif;">
-      <tr><td style="padding:6px;border-bottom:1px solid #eee;">출발</td>
-          <td style="padding:6px;border-bottom:1px solid #eee;text-align:right;"><b>${d.deliveriesDeparted}</b>건</td></tr>
-      <tr><td style="padding:6px;border-bottom:1px solid #eee;">도착 (배송 완료)</td>
-          <td style="padding:6px;border-bottom:1px solid #eee;text-align:right;"><b>${d.deliveriesDone}</b>건</td></tr>
+      <tr><td style="padding:6px;border-bottom:1px solid #eee;">출고 완료</td>
+          <td style="padding:6px;border-bottom:1px solid #eee;text-align:right;"><b>${d.ordersShipped}</b>건</td></tr>
+      <tr><td style="padding:6px;border-bottom:1px solid #eee;">반품 접수</td>
+          <td style="padding:6px;border-bottom:1px solid #eee;text-align:right;${d.ordersReturned > 0 ? 'color:#dc2626;font-weight:bold;' : ''}">${d.ordersReturned}건</td></tr>
     </table>
 
     <h3 style="color:#1a3d6b;margin-top:20px;">📋 재고</h3>

@@ -3,7 +3,10 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { loadDevOrders, updateDevOrderStatus, type DevOrder } from '@/lib/dev-orders';
-import { fetchOrders, updateOrderStatus, dispatchOrderManually, fetchDispatchedOrderIds } from '@/lib/orders';
+import {
+  fetchOrders, updateOrderStatus, dispatchOrderManually,
+  fetchDispatchedOrderIds, returnOrder,
+} from '@/lib/orders';
 import { fetchInvoiceMap, issueInvoice, type InvoiceInfo } from '@/lib/invoices';
 import { createClient } from '@/lib/supabase/client';
 import { isDevMode } from '@/lib/dev-data';
@@ -13,16 +16,18 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import toast, { Toaster } from 'react-hot-toast';
-import { Check, X, Calendar, RefreshCw, Truck, FileText, PackageMinus, PackageCheck } from 'lucide-react';
+import {
+  Check, X, Calendar, RefreshCw, Truck, FileText,
+  PackageMinus, PackageCheck, Undo2,
+} from 'lucide-react';
 
 const STATUS_FILTERS: Array<{ key: OrderStatus | 'all'; label: string }> = [
   { key: 'all',        label: '전체' },
   { key: 'pending',    label: '대기' },
   { key: 'approved',   label: '승인' },
   { key: 'processing', label: '처리중' },
-  { key: 'ready',      label: '출고준비' },
-  { key: 'shipping',   label: '배송중' },
-  { key: 'delivered',  label: '완료' },
+  { key: 'shipped',    label: '출고완료' },
+  { key: 'returned',   label: '반품' },
   { key: 'rejected',   label: '거절' },
 ];
 
@@ -123,7 +128,7 @@ export function AdminOrderList() {
     }
   }
 
-  // 수동 출고 처리 — 상태 변경 없이 재고만 차감 (예: 세금계산서 발행 전에 출고)
+  // 수동 출고 — 상태 변경 없이 재고만 차감 (외상 거래 등 예외 케이스)
   async function manualDispatch(o: DevOrder) {
     if (isDevMode) {
       toast.error('개발 모드에서는 수동 출고 미지원 (Supabase 연결 필요)');
@@ -131,17 +136,34 @@ export function AdminOrderList() {
     }
     const total = o.items.reduce((s, it) => s + it.quantity, 0);
     if (!confirm(
-      `${o.order_number} 출고 처리 (총 ${total}kg)\n\n` +
+      `${o.order_number} 수동 출고 (총 ${total}kg)\n\n` +
       'FIFO 로 재고에서 자동 차감됩니다. 주문 상태는 변하지 않습니다.\n' +
       '재고 부족 시 전체 롤백됩니다. 계속하시겠습니까?',
     )) return;
 
     try {
       await dispatchOrderManually(o.id);
-      toast.success(`${o.order_number} 출고 처리 완료 — 재고 차감됨`);
+      toast.success(`${o.order_number} 수동 출고 완료 — 재고 차감됨`);
       await refresh();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : '출고 실패');
+    }
+  }
+
+  async function handleReturn(o: DevOrder, reason: string, restock: boolean) {
+    if (isDevMode) {
+      toast.error('개발 모드에서는 반품 미지원 (Supabase 연결 필요)');
+      return;
+    }
+    try {
+      await returnOrder(o.id, { reason, restock });
+      toast.success(
+        `${o.order_number} 반품 처리 완료${restock ? ' (재고 복원)' : ' (폐기)'}`,
+      );
+      setExpandedId(null);
+      await refresh();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : '반품 실패');
     }
   }
 
@@ -205,6 +227,7 @@ export function AdminOrderList() {
               onAdvance={(s) => advance(o, s)}
               onIssue={() => issue(o)}
               onManualDispatch={() => manualDispatch(o)}
+              onReturn={(r, restock) => handleReturn(o, r, restock)}
             />
           ))}
         </div>
@@ -222,7 +245,7 @@ export function AdminOrderList() {
 
 function OrderRow({
   order: o, invoice, dispatched, expanded,
-  onToggle, onApprove, onReject, onAdvance, onIssue, onManualDispatch,
+  onToggle, onApprove, onReject, onAdvance, onIssue, onManualDispatch, onReturn,
 }: {
   order: DevOrder;
   invoice?: InvoiceInfo;
@@ -234,29 +257,34 @@ function OrderRow({
   onAdvance: (s: OrderStatus) => void;
   onIssue: () => void;
   onManualDispatch: () => void;
+  onReturn: (reason: string, restock: boolean) => void;
 }) {
   const badge = ORDER_STATUS_BADGE[o.status];
   const [confirmedDate, setConfirmedDate] = useState(o.requested_date || todayISO());
   const [reason, setReason] = useState('');
+  // 반품 폼 상태
+  const [returnReason, setReturnReason] = useState('');
+  const [restock, setRestock] = useState(true);
 
   const hasInvoice = !!invoice && (invoice.status === 'issued' || invoice.status === 'sent');
-  // 발행 버튼 노출 단계: 승인~출고준비 사이 (배송 시작 전)
-  const canIssue = !isDevMode && !invoice && ['approved', 'processing', 'ready'].includes(o.status);
-  // 수동 출고: 운영 모드 + 미출고 + 승인 이후 ~ 배송 전 단계
+  // 발행 버튼 노출: 승인 ~ 처리중 (출고 전)
+  const canIssue = !isDevMode && !invoice && ['approved', 'processing'].includes(o.status);
+  // 수동 출고: 운영 모드 + 미출고 + 승인~처리중
   const canManualDispatch =
     !isDevMode && !dispatched &&
-    ['approved', 'processing', 'ready'].includes(o.status);
+    ['approved', 'processing'].includes(o.status);
 
   // 다음 상태 후보
+  // 출고('shipped') 가 곧 완료 — 이후 도착/배송완료 단계 없음.
   const advances: Array<{ to: OrderStatus; label: string }> = (() => {
     if (o.status === 'approved')   return [{ to: 'processing', label: '처리 시작' }];
-    if (o.status === 'processing') return [{ to: 'ready',      label: '출고 준비 완료' }];
-    if (o.status === 'ready')      return [{ to: 'shipping',   label: '배송 시작 (배차 생성)' }];
-    // 'shipping' → 'delivered' 는 배송기사가 배송 화면에서 처리 (자동 동기화)
+    if (o.status === 'processing') return [{ to: 'shipped',    label: '출고 처리 (재고 차감 + 완료)' }];
     return [];
   })();
-  // 배송 시작은 세금계산서 발행 후에만 (운영 모드)
-  const shippingBlocked = (s: OrderStatus) => s === 'shipping' && !isDevMode && !hasInvoice;
+  // 출고 진입 전 세금계산서 발행 필수 (운영 모드)
+  const shipBlocked = (s: OrderStatus) => s === 'shipped' && !isDevMode && !hasInvoice;
+  // 반품 가능: 출고 완료 상태에서만
+  const canReturn = !isDevMode && o.status === 'shipped';
 
   return (
     <Card className="bg-gradient-to-b from-[#181c28] to-[#13161f] border-white/[0.06] text-white">
@@ -352,7 +380,7 @@ function OrderRow({
               </div>
             )}
 
-            {/* 액션 */}
+            {/* 액션 — pending: 승인/거절 */}
             {o.status === 'pending' && (
               <div className="space-y-3 pt-2 border-t border-[#1f2433]">
                 <div className="flex flex-wrap items-end gap-2">
@@ -420,6 +448,7 @@ function OrderRow({
               </div>
             )}
 
+            {/* 상태 진행 + 수동 출고 */}
             {advances.length > 0 && (
               <div className="pt-2 border-t border-[#1f2433] flex flex-col gap-2">
                 <div className="flex gap-2 flex-wrap">
@@ -427,7 +456,7 @@ function OrderRow({
                     <Button
                       key={a.to}
                       onClick={() => onAdvance(a.to)}
-                      disabled={shippingBlocked(a.to)}
+                      disabled={shipBlocked(a.to)}
                       className="bg-[#1a3d6b] hover:bg-[#235490] text-white disabled:opacity-40"
                     >
                       <Truck className="w-4 h-4 mr-1" />{a.label}
@@ -444,16 +473,45 @@ function OrderRow({
                     </Button>
                   )}
                 </div>
-                {o.status === 'ready' && !hasInvoice && !isDevMode && (
+                {o.status === 'processing' && !hasInvoice && !isDevMode && (
                   <p className="text-[11px] text-amber-400">
-                    ⚠️ 세금계산서를 먼저 발행해야 배송을 시작할 수 있습니다.
+                    ⚠️ 세금계산서를 먼저 발행해야 출고 처리할 수 있습니다.
                   </p>
                 )}
-                {canManualDispatch && (
-                  <p className="text-[11px] text-gray-500">
-                    💡 「수동 출고」는 상태 변경 없이 FIFO 재고만 차감합니다. 외상·즉시 출고 등에 사용.
-                  </p>
-                )}
+                <p className="text-[11px] text-gray-500">
+                  💡 출고 처리 = 재고 차감 + 거래처 알림 + 완료. 이후 단계 없음.
+                </p>
+              </div>
+            )}
+
+            {/* 반품 처리 — 출고 완료 상태에서만 노출 */}
+            {canReturn && (
+              <div className="pt-3 border-t border-[#1f2433] space-y-2">
+                <div className="text-xs font-semibold text-orange-300 flex items-center gap-1">
+                  <Undo2 className="w-3 h-3" /> 반품 처리
+                </div>
+                <Input
+                  value={returnReason}
+                  onChange={(e) => setReturnReason(e.target.value)}
+                  placeholder="반품 사유 (예: 표면 불량, 포장 파손, 수량 부족 등)"
+                  className="bg-[#0f1117] border-[#2a2f3e] text-white"
+                />
+                <label className="flex items-center gap-2 text-xs text-gray-300">
+                  <input
+                    type="checkbox"
+                    checked={restock}
+                    onChange={(e) => setRestock(e.target.checked)}
+                    className="accent-orange-500"
+                  />
+                  정상품 — 재고 복원 (체크 해제 시 폐기 처리)
+                </label>
+                <Button
+                  onClick={() => returnReason.trim() && onReturn(returnReason.trim(), restock)}
+                  disabled={!returnReason.trim()}
+                  className="bg-orange-600 hover:bg-orange-700 text-white"
+                >
+                  <Undo2 className="w-4 h-4 mr-1" />반품 처리 확정
+                </Button>
               </div>
             )}
           </div>

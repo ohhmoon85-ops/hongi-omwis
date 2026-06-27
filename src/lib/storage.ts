@@ -1,15 +1,17 @@
 // ============================================================================
-// Supabase Storage 헬퍼 — 수입신고필증·배송 사진 등 첨부 파일 처리
+// Supabase Storage 헬퍼 — 수입신고필증 첨부 파일 처리
 // ----------------------------------------------------------------------------
 // 사전 조건 (사용자 1회 셋업):
 //   1) Supabase Dashboard → Storage → New bucket → 'customs-docs' (Private)
 //   2) Policies → 'authenticated' 가 INSERT/SELECT 가능 (admin RLS 는 별도)
+//
+// 2026-06-27: 배송 모델 단순화로 delivery-photos 업로드 헬퍼는 제거.
+//   버킷 자체는 Supabase 에 남아 있어 향후 자체 배송 도입 시 재사용 가능.
 // ============================================================================
 
 import { createClient } from '@/lib/supabase/client';
 
 export const CUSTOMS_DOCS_BUCKET = 'customs-docs';
-export const DELIVERY_PHOTOS_BUCKET = 'delivery-photos';
 
 export interface UploadResult {
   path: string;        // 버킷 내 경로 (예: 2026/03/abc.jpg)
@@ -66,30 +68,4 @@ export async function getCustomsDocUrl(path: string): Promise<string | null> {
 export async function deleteCustomsDoc(path: string): Promise<void> {
   const supabase = createClient();
   await supabase.storage.from(CUSTOMS_DOCS_BUCKET).remove([path]);
-}
-
-/** 배송 완료 사진 업로드 — Private 'delivery-photos' 버킷 */
-export async function uploadDeliveryPhoto(file: File): Promise<UploadResult> {
-  const supabase = createClient();
-  const path = makePath(file.name);
-  const { error: upErr } = await supabase.storage
-    .from(DELIVERY_PHOTOS_BUCKET)
-    .upload(path, file, { cacheControl: '3600', upsert: false, contentType: file.type });
-  if (upErr) throw new Error(upErr.message);
-
-  const { data, error: sErr } = await supabase.storage
-    .from(DELIVERY_PHOTOS_BUCKET)
-    .createSignedUrl(path, 3600);
-  if (sErr) throw new Error(sErr.message);
-  return { path, signedUrl: data?.signedUrl };
-}
-
-/** 저장된 path → 새 서명 URL */
-export async function getDeliveryPhotoUrl(path: string): Promise<string | null> {
-  const supabase = createClient();
-  const { data, error } = await supabase.storage
-    .from(DELIVERY_PHOTOS_BUCKET)
-    .createSignedUrl(path, 3600);
-  if (error) return null;
-  return data?.signedUrl ?? null;
 }
