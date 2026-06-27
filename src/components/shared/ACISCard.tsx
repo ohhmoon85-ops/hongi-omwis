@@ -24,9 +24,9 @@ export async function ACISCard() {
                 href={ACIS_APP_URL}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-1 text-[11px] text-[#c8962e] hover:underline"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-[#c8962e]/40 bg-[#c8962e]/10 text-sm font-semibold text-[#c8962e] hover:bg-[#c8962e]/20 transition"
               >
-                열기 <ExternalLink className="w-3 h-3" />
+                열기 <ExternalLink className="w-4 h-4" />
               </a>
             )}
           </span>

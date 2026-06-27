@@ -1,11 +1,8 @@
-import Link from 'next/link';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { ACISCard } from '@/components/shared/ACISCard';
 import { createClient } from '@/lib/supabase/server';
 import { isDevMode } from '@/lib/dev-data';
 import { formatKRW } from '@/lib/utils';
-import { ACIS_APP_URL } from '@/lib/acis';
-import { ExternalLink } from 'lucide-react';
 
 export const dynamic = 'force-dynamic';
 
@@ -134,33 +131,12 @@ export default async function AdminDashboardPage() {
 
   return (
     <div className="p-4 sm:p-6">
-      <header className="mb-6 flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <div className="text-[11px] font-semibold tracking-widest uppercase text-[#c8962e]/80 mb-1">
-            관리자 대시보드
-          </div>
-          <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-gold-gradient">(주)홍지</h1>
-          <p className="text-sm text-gray-400 mt-1">매일 아침 핵심 경영 지표 한눈에</p>
+      <header className="mb-6">
+        <div className="text-[11px] font-semibold tracking-widest uppercase text-[#c8962e]/80 mb-1">
+          관리자 대시보드
         </div>
-        {canSeeACIS && ACIS_APP_URL && (
-          <div className="flex items-center gap-2">
-            <Link
-              href="/admin/acis"
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-[#c8962e] hover:bg-[#b3851f] text-white text-sm font-semibold transition shadow"
-            >
-              🤖 ACIS 임베드 보기
-            </Link>
-            <a
-              href={ACIS_APP_URL}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border border-[#c8962e]/40 text-[#c8962e] hover:bg-[#c8962e]/10 text-sm font-semibold transition"
-              title="새 탭으로 ACIS 열기"
-            >
-              새 탭 <ExternalLink className="w-4 h-4" />
-            </a>
-          </div>
-        )}
+        <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-gold-gradient">(주)홍지</h1>
+        <p className="text-sm text-gray-400 mt-1">매일 아침 핵심 경영 지표 한눈에</p>
       </header>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
