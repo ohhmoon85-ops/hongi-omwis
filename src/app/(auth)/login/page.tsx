@@ -130,7 +130,7 @@ function LoginForm() {
         <Button
           type="submit"
           disabled={loading}
-          className="w-full h-11 bg-gradient-to-r from-[#1a3d6b] to-[#2a5a96] hover:from-[#1f4a82] hover:to-[#316bb0] text-white shadow-lg shadow-[#1a3d6b]/30"
+          className="w-full h-11 bg-gradient-to-r from-[#c8962e] to-[#e0bf70] hover:from-[#d4a23a] hover:to-[#ecc97a] text-white font-semibold shadow-lg shadow-[#c8962e]/30 border border-[#c8962e]/40"
         >
           {loading ? '로그인 중...' : '로그인'}
         </Button>
