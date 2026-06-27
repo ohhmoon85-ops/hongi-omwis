@@ -5,8 +5,9 @@ import { isSupabaseConfigured } from '@/lib/env';
 
 // 역할별 허용 경로 prefix
 // /account 는 모든 인증 사용자가 접근 가능 (본인 비번 변경)
+// /admin/acis 는 외부 ACIS 사이트로 리다이렉트 — 회장도 접근 허용
 const ROLE_ROUTES: Record<UserRole, string[]> = {
-  chairman:    ['/chairman', '/account'],
+  chairman:    ['/chairman', '/account', '/admin/acis'],
   super_admin: ['/admin', '/chairman', '/account'],
   admin:       ['/admin', '/account'],
   driver:      ['/admin/deliveries', '/account'],

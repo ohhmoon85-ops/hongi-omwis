@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { User } from 'lucide-react';
+import { User, Bot } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { ACISCard } from '@/components/shared/ACISCard';
 import { ChairmanCharts } from '@/components/chairman/ChairmanCharts';
@@ -27,6 +27,16 @@ export default function ChairmanMonitorPage() {
             Read-Only
           </span>
           <ThemeToggle variant="dark" />
+          <a
+            href="/admin/acis"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1.5 px-3 h-9 rounded-lg text-sm text-gray-400 hover:text-white hover:bg-white/[0.05] border border-white/[0.06] transition"
+            title="ACIS 새 탭에서 열기"
+          >
+            <Bot className="w-4 h-4" />
+            ACIS
+          </a>
           <Link
             href="/account"
             className="inline-flex items-center gap-1.5 px-3 h-9 rounded-lg text-sm text-gray-400 hover:text-white hover:bg-white/[0.05] border border-white/[0.06] transition"

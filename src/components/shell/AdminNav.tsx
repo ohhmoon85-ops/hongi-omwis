@@ -14,25 +14,23 @@ interface NavItem {
   label: string;
   icon: typeof LayoutDashboard;
   roles: UserRole[];
+  external?: boolean;    // true 면 새 탭으로 열기 (외부 사이트 리다이렉트 라우트)
 }
 
 const NAV: NavItem[] = [
-  { href: '/admin/dashboard',  label: '대시보드', icon: LayoutDashboard, roles: ['super_admin', 'admin'] },
-  { href: '/admin/orders',     label: '주문',     icon: ClipboardList,  roles: ['super_admin', 'admin'] },
-  { href: '/admin/customers',  label: '거래처',   icon: Building2,      roles: ['super_admin', 'admin'] },
-  { href: '/admin/inventory',  label: '재고',     icon: Package,        roles: ['super_admin', 'admin'] },
+  { href: '/admin/dashboard',    label: '대시보드',  icon: LayoutDashboard, roles: ['super_admin', 'admin'] },
+  { href: '/admin/orders',       label: '주문',     icon: ClipboardList,  roles: ['super_admin', 'admin'] },
+  { href: '/admin/customers',    label: '거래처',   icon: Building2,      roles: ['super_admin', 'admin'] },
+  { href: '/admin/inventory',    label: '재고',     icon: Package,        roles: ['super_admin', 'admin'] },
   { href: '/admin/deliveries',   label: '배송',     icon: Truck,          roles: ['super_admin', 'admin', 'driver'] },
   { href: '/admin/notifications',label: '알림 이력', icon: Bell,           roles: ['super_admin', 'admin'] },
   { href: '/admin/users',        label: '사용자',   icon: Users,          roles: ['super_admin'] },
-  { href: '/admin/acis',         label: 'ACIS',     icon: Bot,            roles: ['super_admin'] },
+  { href: '/admin/acis',         label: 'ACIS',     icon: Bot,            roles: ['super_admin', 'admin'], external: true },
 ];
 
 export function AdminNav({ role }: { role: UserRole | null }) {
   const pathname = usePathname();
   const router = useRouter();
-
-  // ACIS 임베드는 풀스크린 — 내비게이션 숨김
-  if (pathname === '/admin/acis') return null;
 
   const items = NAV.filter((n) => !role || n.roles.includes(role));
 
@@ -55,18 +53,31 @@ export function AdminNav({ role }: { role: UserRole | null }) {
         {/* 메뉴 */}
         <nav className="flex items-center gap-1 overflow-x-auto">
           {items.map((n) => {
-            const active = pathname.startsWith(n.href);
+            const active = !n.external && pathname.startsWith(n.href);
             const Icon = n.icon;
+            const classes = `inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${
+              active
+                ? 'bg-[#c8962e]/15 text-[#e0bf70] ring-1 ring-[#c8962e]/30'
+                : 'text-gray-400 hover:text-white hover:bg-white/[0.05]'
+            }`;
+
+            // external: 새 탭에서 외부 라우트 → 본 도메인으로 즉시 리다이렉트
+            if (n.external) {
+              return (
+                <a
+                  key={n.href}
+                  href={n.href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={classes}
+                >
+                  <Icon className="w-4 h-4" />
+                  {n.label}
+                </a>
+              );
+            }
             return (
-              <Link
-                key={n.href}
-                href={n.href}
-                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${
-                  active
-                    ? 'bg-[#c8962e]/15 text-[#e0bf70] ring-1 ring-[#c8962e]/30'
-                    : 'text-gray-400 hover:text-white hover:bg-white/[0.05]'
-                }`}
-              >
+              <Link key={n.href} href={n.href} className={classes}>
                 <Icon className="w-4 h-4" />
                 {n.label}
               </Link>
