@@ -30,24 +30,27 @@ export async function GET() {
   const admin = createAdminClient();
 
   // 모든 사용자 + 프로필 + 거래처명 조회
+  // ⚠️ user_profiles.customer_id 에 FK 가 없어 PostgREST 임베드 조인 불가 →
+  //    customers 를 따로 조회해 코드에서 매핑한다.
   const { data: list } = await admin.auth.admin.listUsers({ page: 1, perPage: 1000 });
-  const { data: profiles } = await admin
-    .from('user_profiles')
-    .select('id, role, name, customer_id, customers(company_name)');
+  const [{ data: profiles }, { data: custList }] = await Promise.all([
+    admin.from('user_profiles').select('id, role, name, customer_id'),
+    admin.from('customers').select('id, company_name'),
+  ]);
+
+  const custName = new Map(
+    (custList ?? []).map((c) => [c.id, c.company_name as string]),
+  );
 
   const profileMap = new Map<string, {
     role: string; name: string | null; customer_id: string | null; company_name: string | null;
   }>();
-  // Supabase join 결과는 1:1 관계라도 타입 시스템이 array 로 추론 — any 캐스팅
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  for (const p of (profiles ?? []) as any[]) {
-    // customers 가 array 또는 object 어느 형태로 와도 안전하게 추출
-    const customers = Array.isArray(p.customers) ? p.customers[0] : p.customers;
+  for (const p of profiles ?? []) {
     profileMap.set(p.id, {
       role: p.role,
       name: p.name,
       customer_id: p.customer_id,
-      company_name: customers?.company_name ?? null,
+      company_name: p.customer_id ? custName.get(p.customer_id) ?? null : null,
     });
   }
 

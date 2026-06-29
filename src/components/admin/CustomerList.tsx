@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { loadDevCustomers, priceTierBadge } from '@/lib/dev-customers';
 import { isDevMode } from '@/lib/dev-data';
+import { createClient } from '@/lib/supabase/client';
 import { formatKRW } from '@/lib/utils';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -28,8 +29,17 @@ export function CustomerList() {
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
-    if (isDevMode) setCustomers(loadDevCustomers());
-    setLoaded(true);
+    (async () => {
+      if (isDevMode) {
+        setCustomers(loadDevCustomers());
+      } else {
+        const { data, error } = await createClient()
+          .from('customers').select('*').order('company_name');
+        if (error) console.error('[customers] fetch failed:', error.message);
+        else setCustomers((data ?? []) as Customer[]);
+      }
+      setLoaded(true);
+    })();
   }, []);
 
   const filtered = useMemo(() => {

@@ -10,6 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { upsertDevCustomer, deactivateDevCustomer, reactivateDevCustomer, PRICE_TIER_OPTIONS } from '@/lib/dev-customers';
 import { isDevMode } from '@/lib/dev-data';
+import { createClient } from '@/lib/supabase/client';
 import { formatKRW } from '@/lib/utils';
 import type { Customer } from '@/types';
 
@@ -67,9 +68,35 @@ export function CustomerForm({ initial, mode }: Props) {
         toast.success(mode === 'create' ? '거래처 등록 완료' : '저장 완료');
         setTimeout(() => router.push('/admin/customers'), 400);
       } else {
-        // TODO: /api/customers POST/PATCH
-        toast.error('운영 모드 API 준비 중');
-        setSubmitting(false);
+        // ─── 운영 모드: Supabase 저장 (admin_all_customers 정책) ──────────
+        const supabase = createClient();
+        const payload = {
+          company_name: form.company_name.trim(),
+          contact_name: form.contact_name || null,
+          phone: form.phone || null,
+          email: form.email || null,
+          address: form.address || null,
+          delivery_address: form.delivery_address || form.address || null,
+          price_tier: form.price_tier,
+          credit_limit: form.credit_limit,
+          current_balance: form.current_balance,
+          former_dealer: form.former_dealer || null,
+          transferred_at: form.former_dealer
+            ? form.transferred_at || new Date().toISOString()
+            : null,
+          business_number: form.business_number || null,
+          ceo_name: form.ceo_name || null,
+          biz_type: form.biz_type || null,
+          biz_item: form.biz_item || null,
+          tax_email: form.tax_email || null,
+          memo: form.memo || null,
+        };
+        const { error } = mode === 'create'
+          ? await supabase.from('customers').insert(payload)
+          : await supabase.from('customers').update(payload).eq('id', form.id);
+        if (error) throw new Error(error.message);
+        toast.success(mode === 'create' ? '거래처 등록 완료' : '저장 완료');
+        setTimeout(() => router.push('/admin/customers'), 400);
       }
     } catch (err) {
       toast.error(err instanceof Error ? err.message : '저장 실패');
@@ -77,17 +104,24 @@ export function CustomerForm({ initial, mode }: Props) {
     }
   }
 
-  function toggleActive() {
+  async function toggleActive() {
     if (!initial) return;
-    if (initial.is_active) {
-      if (!confirm(`${initial.company_name} 을 비활성화 합니다. 거래를 종료하시겠습니까?`)) return;
-      deactivateDevCustomer(initial.id);
-      toast('거래처 비활성화 완료', { icon: '⚠️' });
-    } else {
-      reactivateDevCustomer(initial.id);
-      toast.success('거래처 활성화 완료');
+    const next = !initial.is_active;
+    if (initial.is_active && !confirm(`${initial.company_name} 을 비활성화 합니다. 거래를 종료하시겠습니까?`)) return;
+    try {
+      if (isDevMode) {
+        if (next) reactivateDevCustomer(initial.id);
+        else deactivateDevCustomer(initial.id);
+      } else {
+        const { error } = await createClient()
+          .from('customers').update({ is_active: next }).eq('id', initial.id);
+        if (error) throw new Error(error.message);
+      }
+      toast(next ? '거래처 활성화 완료' : '거래처 비활성화 완료', { icon: next ? undefined : '⚠️' });
+      setTimeout(() => router.push('/admin/customers'), 400);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : '변경 실패');
     }
-    setTimeout(() => router.push('/admin/customers'), 400);
   }
 
   return (
