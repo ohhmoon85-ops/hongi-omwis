@@ -1,6 +1,6 @@
 'use client';
 
-import { Suspense, useState } from 'react';
+import { Suspense, useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -29,8 +29,31 @@ function LoginForm() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [signedIn, setSignedIn] = useState<{ email: string; home: string } | null>(null);
 
   const reason = params.get('reason');
+
+  // 이미 로그인되어 있으면 안내 (계정 전환을 위해 폼은 그대로 노출)
+  useEffect(() => {
+    if (isDevMode) return;
+    (async () => {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const { data: profile } = await supabase
+        .from('user_profiles').select('role').eq('id', user.id).single();
+      const role = (profile?.role ?? 'customer') as UserRole;
+      setSignedIn({ email: user.email ?? '', home: ROLE_HOME[role] });
+    })();
+  }, []);
+
+  async function logout() {
+    await createClient().auth.signOut();
+    document.cookie = 'dev_mock_role=; path=/; max-age=0';
+    setSignedIn(null);
+    setEmail(''); setPassword('');
+    router.refresh();
+  }
 
   function devLoginAs(role: UserRole) {
     setMockRoleCookie(role);
@@ -93,6 +116,33 @@ function LoginForm() {
       {reason === 'forbidden' && (
         <div className="mb-4 px-3 py-2 rounded-lg bg-red-500/10 border border-red-500/30 text-red-400 text-sm">
           해당 페이지에 접근 권한이 없습니다.
+        </div>
+      )}
+
+      {signedIn && (
+        <div className="mb-4 px-3 py-3 rounded-lg bg-[#1a3d6b]/15 border border-[#1a3d6b]/40 text-sm">
+          <div className="text-gray-200">
+            현재 <b className="text-white">{signedIn.email}</b> 로 로그인되어 있습니다.
+          </div>
+          <div className="flex gap-2 mt-2">
+            <button
+              type="button"
+              onClick={() => { router.push(signedIn.home); router.refresh(); }}
+              className="flex-1 px-3 py-2 rounded-lg bg-[#1a3d6b] hover:bg-[#235490] text-white text-xs font-semibold"
+            >
+              내 화면으로 이동
+            </button>
+            <button
+              type="button"
+              onClick={logout}
+              className="flex-1 px-3 py-2 rounded-lg border border-red-500/40 text-red-300 hover:bg-red-500/10 text-xs font-semibold"
+            >
+              로그아웃
+            </button>
+          </div>
+          <div className="text-[11px] text-gray-400 mt-2">
+            아래에서 다른 계정으로 로그인할 수도 있습니다.
+          </div>
         </div>
       )}
 

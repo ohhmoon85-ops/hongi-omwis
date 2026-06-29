@@ -13,13 +13,6 @@ const ROLE_ROUTES: Record<UserRole, string[]> = {
   customer:    ['/customer', '/account'],
 };
 
-const ROLE_HOME: Record<UserRole, string> = {
-  chairman:    '/chairman/monitor',
-  super_admin: '/admin/dashboard',
-  admin:       '/admin/dashboard',
-  customer:    '/customer/order',
-};
-
 // /api/* 는 각 라우트가 자체적으로 getUser()+역할을 검증하므로 미들웨어 역할
 // 게이트에서 제외한다 (역할 prefix 에 안 걸려 forbidden 되는 것을 방지).
 // /forgot-password /reset-password 는 비로그인 사용자도 접근 가능해야 함.
@@ -95,14 +88,8 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  if (user && path === '/login') {
-    const { data: profile } = await supabase
-      .from('user_profiles').select('role').eq('id', user.id).single();
-    const role = (profile?.role ?? 'customer') as UserRole;
-    const url = request.nextUrl.clone();
-    url.pathname = ROLE_HOME[role];
-    return NextResponse.redirect(url);
-  }
+  // 로그인 상태에서 /login 접근 시 자동 리다이렉트하지 않음 —
+  // 계정 전환(다른 사용자 로그인)을 위해 로그인 화면을 그대로 노출한다.
 
   if (user && !isPublic) {
     const { data: profile } = await supabase
