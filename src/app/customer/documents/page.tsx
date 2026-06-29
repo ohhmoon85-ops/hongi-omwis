@@ -65,15 +65,15 @@ export default async function CustomerDocumentsPage() {
   return (
     <div className="min-h-screen bg-app-light p-4 sm:p-6 text-[#1c1c1c]">
       <header className="mb-6 max-w-5xl">
-        <div className="flex items-start justify-between gap-3">
-          <div className="flex-1 min-w-0">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div className="min-w-0">
             <div className="text-xs sm:text-sm text-[#1a3d6b] font-semibold">OMWIS · 거래처</div>
             <h1 className="text-2xl sm:text-3xl font-bold mt-1">세금계산서</h1>
             <p className="text-sm text-gray-600 mt-1">
               발행된 세금계산서를 조회·PDF 저장합니다. 거래처 본인의 문서만 표시됩니다.
             </p>
           </div>
-          <div className="flex flex-shrink-0 items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap shrink-0">
             <Link
               href="/customer/orders"
               className="inline-flex items-center gap-1 px-3 h-10 rounded-lg bg-white border border-[#1a3d6b]/20 text-[#1a3d6b] hover:bg-[#1a3d6b] hover:text-white transition text-sm whitespace-nowrap"

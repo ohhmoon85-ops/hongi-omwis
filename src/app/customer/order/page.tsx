@@ -6,9 +6,13 @@ import { formatKRW } from '@/lib/utils';
 import type { Product, Customer } from '@/types';
 import { createClient } from '@/lib/supabase/server';
 
-async function loadOrderContext(): Promise<{ products: Product[]; customer: Customer }> {
+async function loadOrderContext(): Promise<{
+  products: Product[];
+  customer: Customer;
+  prices: Record<string, number>;
+}> {
   if (isDevMode) {
-    return { products: DEV_PRODUCTS, customer: DEV_CUSTOMER };
+    return { products: DEV_PRODUCTS, customer: DEV_CUSTOMER, prices: {} };
   }
 
   const supabase = createClient();
@@ -18,19 +22,25 @@ async function loadOrderContext(): Promise<{ products: Product[]; customer: Cust
   const { data: profile } = await supabase
     .from('user_profiles').select('customer_id').eq('id', user.id).single();
 
-  const [{ data: products }, { data: customer }] = await Promise.all([
+  const [{ data: products }, { data: customer }, { data: cprices }] = await Promise.all([
     supabase.from('products').select('*').eq('is_active', true).order('name'),
     profile?.customer_id
       ? supabase.from('customers').select('*').eq('id', profile.customer_id).single()
       : Promise.resolve({ data: null }),
+    // 거래처 협상가 (cust_read_own_prices 정책으로 자사 단가만 조회)
+    supabase.from('customer_prices').select('product_id, unit_price'),
   ]);
 
   if (!customer) throw new Error('customer not found');
-  return { products: (products ?? []) as Product[], customer: customer as Customer };
+
+  const prices: Record<string, number> = {};
+  for (const cp of cprices ?? []) prices[cp.product_id] = cp.unit_price;
+
+  return { products: (products ?? []) as Product[], customer: customer as Customer, prices };
 }
 
 export default async function CustomerOrderPage() {
-  const { products, customer } = await loadOrderContext();
+  const { products, customer, prices } = await loadOrderContext();
 
   return (
     <div className="min-h-screen bg-app-light p-4 sm:p-6 text-[#1c1c1c]">
@@ -66,7 +76,7 @@ export default async function CustomerOrderPage() {
         </div>
       </header>
 
-      <OrderForm products={products} customerName={customer.company_name} />
+      <OrderForm products={products} customerName={customer.company_name} prices={prices} />
     </div>
   );
 }

@@ -22,9 +22,19 @@ interface LineItem {
 interface Props {
   products: Product[];
   customerName: string;
+  prices?: Record<string, number>; // 거래처 협상가 (product_id → unit_price)
 }
 
-export function OrderForm({ products, customerName }: Props) {
+// 거래처 협상가 우선 → 없으면 품목 기본가
+function priceOf(
+  product: Product | undefined,
+  prices: Record<string, number> | undefined,
+): number {
+  if (!product) return 0;
+  return prices?.[product.id] ?? product.base_price ?? 0;
+}
+
+export function OrderForm({ products, customerName, prices }: Props) {
   const router = useRouter();
   const [lines, setLines] = useState<LineItem[]>([
     { product_id: products[0]?.id ?? '', quantity: '' },
@@ -45,8 +55,9 @@ export function OrderForm({ products, customerName }: Props) {
   const lineTotals = lines.map((l) => {
     const p = productMap.get(l.product_id);
     const qty = parseFloat(l.quantity) || 0;
-    const price = p?.base_price ?? 0;
-    return { product: p, qty, price, subtotal: qty * price };
+    const price = priceOf(p, prices);
+    const isNegotiated = !!p && prices?.[p.id] != null;
+    return { product: p, qty, price, isNegotiated, subtotal: qty * price };
   });
 
   const total = lineTotals.reduce((s, l) => s + l.subtotal, 0);
@@ -191,9 +202,14 @@ export function OrderForm({ products, customerName }: Props) {
                         />
                       </div>
 
-                      <div className="flex-1 sm:w-32 text-right pb-1">
-                        <div className="text-xs text-gray-500">금액</div>
-                        <div className="text-base sm:text-sm font-semibold text-[#1a3d6b] mt-1">
+                      <div className="flex-1 sm:w-36 text-right pb-1">
+                        <div className="text-xs text-gray-500">
+                          단가 {formatKRW(lineTotals[idx].price)}
+                          {lineTotals[idx].isNegotiated && (
+                            <span className="ml-1 text-[10px] text-[#1a3d6b] font-semibold">협상가</span>
+                          )}
+                        </div>
+                        <div className="text-base sm:text-sm font-semibold text-[#1a3d6b] mt-0.5">
                           {formatKRW(subtotal)}
                         </div>
                       </div>

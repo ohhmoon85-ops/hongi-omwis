@@ -41,9 +41,33 @@ export async function POST(req: NextRequest) {
   // service role 클라이언트로 주문번호 생성 + 인서트
   const admin = createAdminClient();
 
+  // 권위 있는 단가 결정: 거래처 협상가 → 없으면 품목 기본가.
+  // ⚠️ 클라이언트가 보낸 unit_price 는 신뢰하지 않고 서버에서 재계산(가격 위변조 방지)
+  const productIds = items.map((it) => it.product_id);
+  const [{ data: prods }, { data: cps }] = await Promise.all([
+    admin.from('products').select('id, base_price').in('id', productIds),
+    admin.from('customer_prices')
+      .select('product_id, unit_price')
+      .eq('customer_id', profile.customer_id)
+      .in('product_id', productIds),
+  ]);
+  const priceMap = new Map<string, number>();
+  for (const p of prods ?? []) priceMap.set(p.id, p.base_price ?? 0);
+  for (const cp of cps ?? []) priceMap.set(cp.product_id, cp.unit_price); // 협상가 우선
+
+  const pricedItems = items.map((it) => {
+    const unit = priceMap.get(it.product_id) ?? 0;
+    return {
+      product_id: it.product_id,
+      quantity: it.quantity,
+      unit_price: unit,
+      subtotal: Math.round(it.quantity * unit),
+    };
+  });
+  const total = pricedItems.reduce((s, it) => s + it.subtotal, 0);
+
   const { data: orderNumberRow } = await admin.rpc('generate_order_number');
   const orderNumber = orderNumberRow as unknown as string;
-  const total = items.reduce((s, it) => s + it.quantity * it.unit_price, 0);
 
   const { data: order, error: orderErr } = await admin
     .from('orders')
@@ -62,15 +86,10 @@ export async function POST(req: NextRequest) {
     return apiError('internal', '주문 저장에 실패했습니다', orderErr?.message);
   }
 
-  // 주문 상세 인서트
-  const orderItems = items.map((it) => ({
-    order_id: order.id,
-    product_id: it.product_id,
-    quantity: it.quantity,
-    unit_price: it.unit_price,
-    subtotal: it.quantity * it.unit_price,
-  }));
-  await admin.from('order_items').insert(orderItems);
+  // 주문 상세 인서트 (서버 계산 단가 사용)
+  await admin.from('order_items').insert(
+    pricedItems.map((it) => ({ order_id: order.id, ...it })),
+  );
 
   // 거래처 + 관리자 정보 조회 후 알림 발송
   const { data: customer } = await admin
