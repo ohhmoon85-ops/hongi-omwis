@@ -487,9 +487,10 @@ ORDER BY p.role;
 
 
 -- ╔══════════════════════════════════════════════════════════════════════════╗
--- ║ PART 2 — 배송모델 단순화 · 상태/역할 이관 (004) [기존 DB 필수]            ║
--- ║ orders.status: ready→processing, shipping/delivered→shipped               ║
--- ║ driver 역할 제거(→admin) · returns 테이블                                  ║
+-- ║ PART 2 — 배송모델 단순화 · 상태/역할 이관 (004) [신규/기존 DB 모두 안전] ║
+-- ║ orders.status: ready→processing, shipping/delivered→shipped (멱등)        ║
+-- ║ driver 역할 제거(→admin, 매칭 0건이면 no-op) · returns 테이블 추가         ║
+-- ║ 신규 환경에서는 PART 1 의 신규 CHECK 와 같아 DROP/ADD 가 사실상 no-op.    ║
 -- ╚══════════════════════════════════════════════════════════════════════════╝
 -- ============================================================================
 -- 004_shipping_model_refactor.sql
@@ -719,23 +720,25 @@ CREATE POLICY "storage_admin_delete_customs"
 -- 그 후 이 SQL 을 SQL Editor 에 붙여넣고 Run — RLS 정책 설치.
 -- ════════════════════════════════════════════════════════════════════════════
 
--- driver / admin / super_admin: INSERT (사진 업로드)
+-- admin / super_admin: INSERT (사진 업로드)
+-- driver 역할은 2026-06-27 배송 모델 단순화에서 폐기됨 — 본 정책에서도 제거.
+-- 버킷 자체는 유지 (향후 자체 배송 도입 시 재사용).
 DROP POLICY IF EXISTS "storage_upload_delivery_photos" ON storage.objects;
 CREATE POLICY "storage_upload_delivery_photos"
   ON storage.objects FOR INSERT
   WITH CHECK (
     bucket_id = 'delivery-photos'
-    AND current_role_v() IN ('super_admin','admin','driver')
+    AND current_role_v() IN ('super_admin','admin')
   );
 
--- driver / admin / super_admin / chairman / customer: SELECT
+-- admin / super_admin / chairman / customer: SELECT
 -- (거래처는 자사 주문에 한해 — RLS 가 deliveries 테이블에서 이미 필터)
 DROP POLICY IF EXISTS "storage_read_delivery_photos" ON storage.objects;
 CREATE POLICY "storage_read_delivery_photos"
   ON storage.objects FOR SELECT
   USING (
     bucket_id = 'delivery-photos'
-    AND current_role_v() IN ('super_admin','admin','driver','chairman','customer')
+    AND current_role_v() IN ('super_admin','admin','chairman','customer')
   );
 
 -- super_admin / admin: DELETE
