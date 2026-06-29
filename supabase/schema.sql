@@ -400,6 +400,11 @@ DROP POLICY IF EXISTS "cust_read_own_invoices" ON invoices;
 CREATE POLICY "cust_read_own_invoices" ON invoices FOR SELECT
   USING (current_role_v() = 'customer' AND customer_id = current_customer_id());
 
+-- 거래처는 자기 회사 정보만 조회 (주문 화면에서 신용한도·미수 표시에 필요)
+DROP POLICY IF EXISTS "cust_read_own_company" ON customers;
+CREATE POLICY "cust_read_own_company" ON customers FOR SELECT
+  USING (current_role_v() = 'customer' AND id = current_customer_id());
+
 -- ============================================================================
 -- 시드 데이터 (개발 시작용)
 -- ============================================================================
