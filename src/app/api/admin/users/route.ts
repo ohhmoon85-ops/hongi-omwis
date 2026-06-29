@@ -75,13 +75,57 @@ export async function POST(req: NextRequest) {
   const guard = await requireSuperAdmin();
   if (guard.error) return guard.error;
 
-  const { user_id, password } = (await req.json()) as { user_id?: string; password?: string };
+  const body = await req.json() as {
+    action?: 'create' | 'reset';
+    user_id?: string;
+    password?: string;
+    email?: string;
+    name?: string;
+    role?: string;
+    customer_id?: string;
+  };
+  const admin = createAdminClient();
+
+  // ─── 계정 발급 ──────────────────────────────────────────────────────────
+  if (body.action === 'create') {
+    const { email, password, name, role, customer_id } = body;
+    if (!email || !password || password.length < 6) {
+      return apiError('validation', '이메일과 6자 이상 비밀번호가 필요합니다');
+    }
+    if (!role || !['chairman', 'super_admin', 'admin', 'customer'].includes(role)) {
+      return apiError('validation', '역할이 올바르지 않습니다');
+    }
+    if (role === 'customer' && !customer_id) {
+      return apiError('validation', '거래처 계정은 소속 거래처를 선택해야 합니다');
+    }
+
+    const { data: created, error } = await admin.auth.admin.createUser({
+      email, password, email_confirm: true,
+    });
+    if (error || !created.user) {
+      return apiError('internal', '계정 생성 실패 (이미 존재하는 이메일일 수 있음)', error?.message);
+    }
+
+    const { error: pErr } = await admin.from('user_profiles').insert({
+      id: created.user.id,
+      role,
+      name: name || null,
+      customer_id: role === 'customer' ? customer_id : null,
+    });
+    if (pErr) {
+      // 프로필 생성 실패 → 고아 auth 계정 정리
+      await admin.auth.admin.deleteUser(created.user.id);
+      return apiError('internal', '프로필 생성 실패', pErr.message);
+    }
+    return NextResponse.json({ ok: true, id: created.user.id });
+  }
+
+  // ─── 비밀번호 초기화 (기본) ──────────────────────────────────────────────
+  const { user_id, password } = body;
   if (!user_id) return apiError('validation', 'user_id 가 필요합니다');
   if (!password || password.length < 6) {
     return apiError('validation', '비밀번호는 최소 6자 이상이어야 합니다');
   }
-
-  const admin = createAdminClient();
   const { error } = await admin.auth.admin.updateUserById(user_id, { password });
   if (error) return apiError('internal', '비밀번호 초기화 실패', error.message);
 

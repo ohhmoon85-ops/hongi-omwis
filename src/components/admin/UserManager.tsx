@@ -2,11 +2,12 @@
 
 import { useEffect, useState } from 'react';
 import toast, { Toaster } from 'react-hot-toast';
-import { Key, RefreshCw, Search, Eye, EyeOff, X } from 'lucide-react';
+import { Key, RefreshCw, Search, Eye, EyeOff, X, UserPlus } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
+import { createClient } from '@/lib/supabase/client';
 import { formatDate } from '@/lib/utils';
 import { ROLE_LABEL, type UserRole } from '@/types';
 import { readApiError } from '@/lib/api-error';
@@ -35,6 +36,7 @@ export function UserManager() {
   const [filter, setFilter] = useState<UserRole | 'all'>('all');
   const [query, setQuery] = useState('');
   const [resetting, setResetting] = useState<UserRow | null>(null);
+  const [creating, setCreating] = useState(false);
 
   async function load() {
     try {
@@ -107,6 +109,9 @@ export function UserManager() {
         >
           <RefreshCw className="w-4 h-4" />
         </button>
+        <Button onClick={() => setCreating(true)} className="bg-green-600 hover:bg-green-700 text-white ml-auto">
+          <UserPlus className="w-4 h-4 mr-1" /> 계정 발급
+        </Button>
       </div>
 
       {/* 목록 */}
@@ -171,7 +176,130 @@ export function UserManager() {
           onDone={() => { setResetting(null); load(); }}
         />
       )}
+
+      {/* 계정 발급 모달 */}
+      {creating && (
+        <CreateUserModal
+          onClose={() => setCreating(false)}
+          onDone={() => { setCreating(false); load(); }}
+        />
+      )}
     </>
+  );
+}
+
+function CreateUserModal({ onClose, onDone }: { onClose: () => void; onDone: () => void }) {
+  const [email, setEmail] = useState('');
+  const [name, setName] = useState('');
+  const [password, setPassword] = useState('');
+  const [role, setRole] = useState<UserRole>('customer');
+  const [customerId, setCustomerId] = useState('');
+  const [customers, setCustomers] = useState<Array<{ id: string; company_name: string }>>([]);
+  const [show, setShow] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    (async () => {
+      const { data } = await createClient()
+        .from('customers').select('id, company_name').eq('is_active', true).order('company_name');
+      setCustomers((data ?? []) as Array<{ id: string; company_name: string }>);
+    })();
+  }, []);
+
+  async function submit() {
+    if (!email.trim()) { toast.error('이메일을 입력하세요'); return; }
+    if (password.length < 6) { toast.error('비밀번호는 6자 이상'); return; }
+    if (role === 'customer' && !customerId) { toast.error('소속 거래처를 선택하세요'); return; }
+    setSaving(true);
+    try {
+      const res = await fetch('/api/admin/users', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'create',
+          email: email.trim(), password, name: name.trim() || null, role,
+          customer_id: role === 'customer' ? customerId : null,
+        }),
+      });
+      if (!res.ok) throw new Error(await readApiError(res));
+      toast.success('계정 발급 완료');
+      onDone();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : '발급 실패');
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
+      <div className="w-full max-w-md bg-[#171b26] border border-white/[0.06] rounded-2xl p-5">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-bold text-white inline-flex items-center gap-2">
+            <UserPlus className="w-5 h-5 text-green-400" />
+            로그인 계정 발급
+          </h3>
+          <button onClick={onClose} className="text-gray-400 hover:text-white"><X className="w-5 h-5" /></button>
+        </div>
+
+        <div className="space-y-3">
+          <div>
+            <Label className="text-xs text-gray-400">역할</Label>
+            <select value={role} onChange={(e) => setRole(e.target.value as UserRole)}
+              className="mt-1 w-full h-10 px-3 rounded-md border border-[#2a2f3e] bg-[#0f1117] text-white text-sm">
+              <option value="customer">거래처</option>
+              <option value="admin">운영 관리자</option>
+              <option value="chairman">회장 (모니터링)</option>
+              <option value="super_admin">슈퍼 관리자</option>
+            </select>
+          </div>
+
+          {role === 'customer' && (
+            <div>
+              <Label className="text-xs text-gray-400">소속 거래처</Label>
+              <select value={customerId} onChange={(e) => setCustomerId(e.target.value)}
+                className="mt-1 w-full h-10 px-3 rounded-md border border-[#2a2f3e] bg-[#0f1117] text-white text-sm">
+                <option value="">— 선택 —</option>
+                {customers.map((c) => <option key={c.id} value={c.id}>{c.company_name}</option>)}
+              </select>
+              {customers.length === 0 && (
+                <p className="text-[11px] text-amber-400 mt-1">활성 거래처가 없습니다. 먼저 거래처를 등록하세요.</p>
+              )}
+            </div>
+          )}
+
+          <div>
+            <Label className="text-xs text-gray-400">이메일 (로그인 ID)</Label>
+            <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)}
+              placeholder="user@company.com" autoComplete="off"
+              className="bg-[#0f1117] border-[#2a2f3e] text-white mt-1" />
+          </div>
+          <div>
+            <Label className="text-xs text-gray-400">이름 (선택)</Label>
+            <Input value={name} onChange={(e) => setName(e.target.value)}
+              placeholder="담당자명" className="bg-[#0f1117] border-[#2a2f3e] text-white mt-1" />
+          </div>
+          <div>
+            <Label className="text-xs text-gray-400">초기 비밀번호 (6자 이상)</Label>
+            <div className="relative mt-1">
+              <Input type={show ? 'text' : 'password'} value={password}
+                onChange={(e) => setPassword(e.target.value)} autoComplete="new-password"
+                className="bg-[#0f1117] border-[#2a2f3e] text-white pr-10" />
+              <button type="button" onClick={() => setShow(!show)}
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white">
+                {show ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div className="flex gap-2 mt-5">
+          <Button onClick={submit} disabled={saving} className="flex-1 bg-green-600 hover:bg-green-700 text-white">
+            {saving ? '발급 중...' : '계정 발급'}
+          </Button>
+          <Button onClick={onClose} variant="outline">취소</Button>
+        </div>
+      </div>
+    </div>
   );
 }
 

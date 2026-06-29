@@ -1,5 +1,6 @@
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { ACISCard } from '@/components/shared/ACISCard';
+import { DashboardCharts } from '@/components/admin/DashboardCharts';
 import { createClient } from '@/lib/supabase/server';
 import { isDevMode } from '@/lib/dev-data';
 import { formatKRW } from '@/lib/utils';
@@ -162,6 +163,9 @@ export default async function AdminDashboardPage() {
         ))}
         {canSeeACIS && <ACISCard />}
       </div>
+
+      {/* 그래프 — 매출 추세 + 주문 상태 분포 */}
+      <DashboardCharts />
 
       <footer className="mt-8 text-xs text-gray-500">
         {isDevMode
