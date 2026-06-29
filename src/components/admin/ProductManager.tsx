@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import {
-  fetchAllProducts, updateProductPrice, setProductActive, addProduct,
+  fetchAllProducts, updateProduct, setProductActive, addProduct,
 } from '@/lib/products';
 import { isDevMode, DEV_PRODUCTS } from '@/lib/dev-data';
 import { formatKRW } from '@/lib/utils';
@@ -72,16 +72,36 @@ export function ProductManager() {
 
 function ProductRow({ product: p, onSaved }: { product: Product; onSaved: () => void }) {
   const [editing, setEditing] = useState(false);
-  const [price, setPrice] = useState(String(p.base_price ?? 0));
   const [saving, setSaving] = useState(false);
+  // 전체 편집 폼 상태
+  const [name, setName] = useState(p.name);
+  const [type, setType] = useState<ProductType>(p.type);
+  const [price, setPrice] = useState(String(p.base_price ?? 0));
+  const [unit, setUnit] = useState(p.unit);
+  const [thickness, setThickness] = useState(p.thickness != null ? String(p.thickness) : '');
+  const [width, setWidth] = useState(p.width != null ? String(p.width) : '');
 
-  async function savePrice() {
+  function resetForm() {
+    setName(p.name); setType(p.type); setPrice(String(p.base_price ?? 0));
+    setUnit(p.unit); setThickness(p.thickness != null ? String(p.thickness) : '');
+    setWidth(p.width != null ? String(p.width) : '');
+  }
+
+  async function save() {
+    if (!name.trim()) { toast.error('품목명을 입력하세요'); return; }
     const n = parseInt(price, 10);
     if (isNaN(n) || n < 0) { toast.error('단가를 확인하세요'); return; }
     setSaving(true);
     try {
-      await updateProductPrice(p.id, n);
-      toast.success(`${p.name} 단가 저장`);
+      await updateProduct(p.id, {
+        name: name.trim(),
+        type,
+        base_price: n,
+        unit: unit || 'kg',
+        thickness: thickness ? parseFloat(thickness) : null,
+        width: width ? parseInt(width, 10) : null,
+      });
+      toast.success(`${name.trim()} 저장`);
       setEditing(false);
       onSaved();
     } catch (err) {
@@ -104,59 +124,94 @@ function ProductRow({ product: p, onSaved }: { product: Product; onSaved: () => 
   return (
     <Card className={`bg-gradient-to-b from-[#181c28] to-[#13161f] ${p.is_active ? 'border-white/[0.06]' : 'border-white/[0.03] opacity-60'} text-white`}>
       <CardContent className="py-3">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div className="min-w-0">
-            <div className="flex items-center gap-2 flex-wrap">
-              <span className={`text-[11px] px-2 py-0.5 rounded ${TYPE_BADGE[p.type]}`}>
-                {PRODUCT_TYPE_LABEL[p.type]}
-              </span>
-              <span className="text-sm font-semibold">{p.name}</span>
-              {!p.is_active && <span className="text-[11px] text-gray-500">판매중지</span>}
-            </div>
-            <div className="text-xs text-gray-500 mt-1 space-x-2">
-              {p.thickness != null && <span>두께 {p.thickness}mm</span>}
-              {p.width != null && <span>· 폭 {p.width}mm</span>}
-              <span>· 단위 {p.unit}</span>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-3 shrink-0">
-            {editing ? (
-              <div className="flex items-end gap-2">
-                <div className="w-32">
-                  <label className="text-[11px] text-gray-400">기본 단가 (원/{p.unit})</label>
-                  <Input
-                    type="number" inputMode="numeric" value={price}
-                    onChange={(e) => setPrice(e.target.value)}
-                    className="bg-[#0f1117] border-[#2a2f3e] text-white h-9 mt-1"
-                  />
-                </div>
-                <Button onClick={savePrice} disabled={saving} className="h-9 bg-[#1a3d6b] hover:bg-[#235490] text-white">
-                  저장
-                </Button>
-                <Button onClick={() => { setEditing(false); setPrice(String(p.base_price ?? 0)); }} variant="outline" className="h-9">
-                  취소
-                </Button>
+        {editing ? (
+          /* ── 전체 편집 폼 ── */
+          <div className="space-y-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="sm:col-span-2">
+                <label className="text-[11px] text-gray-400">품목명</label>
+                <Input value={name} onChange={(e) => setName(e.target.value)}
+                  className="bg-[#0f1117] border-[#2a2f3e] text-white h-9 mt-1" />
               </div>
-            ) : (
-              <>
-                <div className="text-right">
-                  <div className="text-[11px] text-gray-500">기본 단가</div>
-                  <div className="text-lg font-bold text-[#c8962e]">{formatKRW(p.base_price)}</div>
+              <div>
+                <label className="text-[11px] text-gray-400">종류</label>
+                <select value={type} onChange={(e) => setType(e.target.value as ProductType)}
+                  className="mt-1 w-full h-9 px-3 rounded-md border border-[#2a2f3e] bg-[#0f1117] text-white text-sm">
+                  <option value="raw">생 알루미늄</option>
+                  <option value="oil">지용성</option>
+                  <option value="water">수용성</option>
+                </select>
+              </div>
+              <div>
+                <label className="text-[11px] text-gray-400">기본 단가 (원)</label>
+                <Input type="number" inputMode="numeric" value={price}
+                  onChange={(e) => setPrice(e.target.value)}
+                  className="bg-[#0f1117] border-[#2a2f3e] text-white h-9 mt-1" />
+              </div>
+              <div>
+                <label className="text-[11px] text-gray-400">단위</label>
+                <Input value={unit} onChange={(e) => setUnit(e.target.value)}
+                  className="bg-[#0f1117] border-[#2a2f3e] text-white h-9 mt-1" />
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="text-[11px] text-gray-400">두께(mm)</label>
+                  <Input type="number" inputMode="decimal" value={thickness}
+                    onChange={(e) => setThickness(e.target.value)} placeholder="선택"
+                    className="bg-[#0f1117] border-[#2a2f3e] text-white h-9 mt-1" />
                 </div>
-                <button onClick={() => setEditing(true)} className="p-2 text-gray-400 hover:text-white" title="단가 수정">
-                  <Pencil className="w-4 h-4" />
-                </button>
-                <button
-                  onClick={toggleActive}
-                  className={`text-xs px-2 py-1 rounded border ${p.is_active ? 'border-red-500/30 text-red-400 hover:bg-red-500/10' : 'border-green-500/30 text-green-400 hover:bg-green-500/10'}`}
-                >
-                  {p.is_active ? '판매 중지' : '판매 재개'}
-                </button>
-              </>
-            )}
+                <div>
+                  <label className="text-[11px] text-gray-400">폭(mm)</label>
+                  <Input type="number" inputMode="numeric" value={width}
+                    onChange={(e) => setWidth(e.target.value)} placeholder="선택"
+                    className="bg-[#0f1117] border-[#2a2f3e] text-white h-9 mt-1" />
+                </div>
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <Button onClick={save} disabled={saving} className="h-9 bg-[#1a3d6b] hover:bg-[#235490] text-white">
+                {saving ? '저장 중...' : '저장'}
+              </Button>
+              <Button onClick={() => { setEditing(false); resetForm(); }} variant="outline" className="h-9">
+                취소
+              </Button>
+            </div>
           </div>
-        </div>
+        ) : (
+          /* ── 표시 ── */
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className={`text-[11px] px-2 py-0.5 rounded ${TYPE_BADGE[p.type]}`}>
+                  {PRODUCT_TYPE_LABEL[p.type]}
+                </span>
+                <span className="text-sm font-semibold">{p.name}</span>
+                {!p.is_active && <span className="text-[11px] text-gray-500">판매중지</span>}
+              </div>
+              <div className="text-xs text-gray-500 mt-1 space-x-2">
+                {p.thickness != null && <span>두께 {p.thickness}mm</span>}
+                {p.width != null && <span>· 폭 {p.width}mm</span>}
+                <span>· 단위 {p.unit}</span>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3 shrink-0">
+              <div className="text-right">
+                <div className="text-[11px] text-gray-500">기본 단가</div>
+                <div className="text-lg font-bold text-[#c8962e]">{formatKRW(p.base_price)}</div>
+              </div>
+              <button onClick={() => { resetForm(); setEditing(true); }} className="p-2 text-gray-400 hover:text-white" title="품목 수정">
+                <Pencil className="w-4 h-4" />
+              </button>
+              <button
+                onClick={toggleActive}
+                className={`text-xs px-2 py-1 rounded border ${p.is_active ? 'border-red-500/30 text-red-400 hover:bg-red-500/10' : 'border-green-500/30 text-green-400 hover:bg-green-500/10'}`}
+              >
+                {p.is_active ? '판매 중지' : '판매 재개'}
+              </button>
+            </div>
+          </div>
+        )}
       </CardContent>
     </Card>
   );

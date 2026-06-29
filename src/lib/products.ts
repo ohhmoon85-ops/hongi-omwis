@@ -21,6 +21,23 @@ export async function updateProductPrice(id: string, basePrice: number): Promise
   if (error) throw new Error(error.message);
 }
 
+// 품목 전체 항목 수정 (이름·종류·두께·폭·단위·단가)
+export async function updateProduct(
+  id: string,
+  fields: {
+    name?: string;
+    type?: ProductType;
+    base_price?: number;
+    unit?: string;
+    thickness?: number | null;
+    width?: number | null;
+  },
+): Promise<void> {
+  const supabase = createClient();
+  const { error } = await supabase.from('products').update(fields).eq('id', id);
+  if (error) throw new Error(error.message);
+}
+
 export async function setProductActive(id: string, isActive: boolean): Promise<void> {
   const supabase = createClient();
   const { error } = await supabase
