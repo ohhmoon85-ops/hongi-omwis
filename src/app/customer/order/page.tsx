@@ -35,8 +35,8 @@ export default async function CustomerOrderPage() {
   return (
     <div className="min-h-screen bg-app-light p-4 sm:p-6 text-[#1c1c1c]">
       <header className="mb-6 max-w-3xl">
-        <div className="flex items-start justify-between gap-3">
-          <div className="flex-1 min-w-0">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div className="min-w-0">
             <div className="text-xs sm:text-sm text-[#1a3d6b] font-semibold">OMWIS · 거래처 주문</div>
             <h1 className="text-2xl sm:text-3xl font-bold mt-1">주문하기</h1>
             <div className="mt-2 space-y-1">
