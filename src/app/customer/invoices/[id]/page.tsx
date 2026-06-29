@@ -111,7 +111,7 @@ export default async function CustomerInvoicePrintPage({ params }: PageProps) {
       ` }} />
 
       <div className="no-print bg-white border-b border-gray-200 p-4 sticky top-0 z-10">
-        <div className="max-w-[210mm] mx-auto flex items-center justify-between">
+        <div className="max-w-[210mm] mx-auto flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <Link href="/customer/documents" className="text-xs text-gray-500 hover:text-gray-800">
               ← 세금계산서 목록

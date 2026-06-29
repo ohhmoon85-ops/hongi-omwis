@@ -5,7 +5,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { ROLE_LABEL, type UserRole } from '@/types';
 import {
-  LayoutDashboard, ClipboardList, Building2, Package, Bot, Bell, User, Users, LogOut,
+  LayoutDashboard, ClipboardList, Building2, Package, Tag, Bot, Bell, User, Users, LogOut,
 } from 'lucide-react';
 import { ThemeToggle } from '@/components/shared/ThemeToggle';
 
@@ -21,6 +21,7 @@ const NAV: NavItem[] = [
   { href: '/admin/dashboard',    label: '대시보드',  icon: LayoutDashboard, roles: ['super_admin', 'admin'] },
   { href: '/admin/orders',       label: '주문',     icon: ClipboardList,  roles: ['super_admin', 'admin'] },
   { href: '/admin/customers',    label: '거래처',   icon: Building2,      roles: ['super_admin', 'admin'] },
+  { href: '/admin/products',     label: '품목',     icon: Tag,            roles: ['super_admin', 'admin'] },
   { href: '/admin/inventory',    label: '재고',     icon: Package,        roles: ['super_admin', 'admin'] },
   { href: '/admin/notifications',label: '알림 이력', icon: Bell,           roles: ['super_admin', 'admin'] },
   { href: '/admin/users',        label: '사용자',   icon: Users,          roles: ['super_admin'] },

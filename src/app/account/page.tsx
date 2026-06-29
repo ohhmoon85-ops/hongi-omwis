@@ -40,7 +40,7 @@ export default async function AccountPage() {
 
   return (
     <div className="min-h-screen bg-[#0f1117] p-4 sm:p-6 text-white">
-      <header className="mb-6 max-w-2xl flex items-start justify-between gap-3">
+      <header className="mb-6 max-w-2xl flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <Link
             href={home}

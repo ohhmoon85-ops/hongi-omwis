@@ -113,7 +113,7 @@ export default async function InvoicePrintPage({ params }: PageProps) {
 
       {/* 화면용 헤더 (인쇄 시 숨김) */}
       <div className="no-print bg-[#0f1117] border-b border-[#1f2433] p-4 sticky top-0 z-10">
-        <div className="max-w-[210mm] mx-auto flex items-center justify-between">
+        <div className="max-w-[210mm] mx-auto flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <Link
               href={`/admin/orders`}

@@ -12,8 +12,8 @@ import { ThemeToggle } from '@/components/shared/ThemeToggle';
 export default function ChairmanMonitorPage() {
   return (
     <div className="min-h-screen bg-app p-4 sm:p-6 text-white">
-      <header className="mb-6 flex items-start justify-between gap-3 flex-wrap">
-        <div>
+      <header className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0">
           <div className="text-[11px] font-semibold tracking-widest uppercase text-[#c8962e]/80 mb-1">
             👑 회장 모니터링
           </div>
@@ -22,7 +22,7 @@ export default function ChairmanMonitorPage() {
             전사 현황을 실시간 열람 — 모든 데이터는 Read-Only
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <span className="text-xs px-3 py-1 rounded-full bg-[#c8962e]/15 text-[#c8962e] border border-[#c8962e]/30">
             Read-Only
           </span>
