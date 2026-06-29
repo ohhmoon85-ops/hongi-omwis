@@ -36,6 +36,11 @@ export function CustomerForm({ initial, mode }: Props) {
     is_active: true,
     former_dealer: null,
     transferred_at: null,
+    business_number: null,   // 세금계산서용 — set() 으로 채워질 수 있게 명시
+    ceo_name: null,
+    biz_type: null,
+    biz_item: null,
+    tax_email: null,
     memo: null,
     created_at: '',
     updated_at: '',

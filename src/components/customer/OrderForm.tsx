@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
-import { Plus, X } from 'lucide-react';
+import { Plus, X, AlertTriangle } from 'lucide-react';
 import toast, { Toaster } from 'react-hot-toast';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -36,9 +36,10 @@ function priceOf(
 
 export function OrderForm({ products, customerName, prices }: Props) {
   const router = useRouter();
-  const [lines, setLines] = useState<LineItem[]>([
-    { product_id: products[0]?.id ?? '', quantity: '' },
-  ]);
+  const hasProducts = products.length > 0;
+  const [lines, setLines] = useState<LineItem[]>(
+    hasProducts ? [{ product_id: products[0]!.id, quantity: '' }] : [],
+  );
   const [requestedDate, setRequestedDate] = useState(() => {
     const d = new Date();
     d.setDate(d.getDate() + 7);
@@ -63,7 +64,8 @@ export function OrderForm({ products, customerName, prices }: Props) {
   const total = lineTotals.reduce((s, l) => s + l.subtotal, 0);
 
   function addLine() {
-    setLines([...lines, { product_id: products[0]?.id ?? '', quantity: '' }]);
+    if (!hasProducts) return;
+    setLines([...lines, { product_id: products[0]!.id, quantity: '' }]);
   }
 
   function removeLine(idx: number) {
@@ -162,6 +164,18 @@ export function OrderForm({ products, customerName, prices }: Props) {
             <CardTitle className="text-base">품목 선택</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
+            {!hasProducts && (
+              <div className="p-4 rounded-lg border border-amber-300 bg-amber-50 text-sm text-amber-900 flex gap-2">
+                <AlertTriangle className="w-5 h-5 mt-0.5 flex-shrink-0 text-amber-600" />
+                <div className="space-y-1">
+                  <div className="font-semibold">주문 가능한 품목이 없습니다</div>
+                  <div className="text-xs leading-relaxed">
+                    관리자가 품목을 등록하지 않았거나, 등록된 품목이 모두 비활성 상태입니다.<br />
+                    (주)홍지 담당자에게 문의해 주세요.
+                  </div>
+                </div>
+              </div>
+            )}
             {lines.map((line, idx) => {
               const p = productMap.get(line.product_id);
               const subtotal = lineTotals[idx].subtotal;
@@ -231,14 +245,16 @@ export function OrderForm({ products, customerName, prices }: Props) {
               );
             })}
 
-            <Button
-              type="button"
-              variant="outline"
-              onClick={addLine}
-              className="w-full h-12 text-base"
-            >
-              <Plus className="w-5 h-5 mr-1" /> 품목 추가
-            </Button>
+            {hasProducts && (
+              <Button
+                type="button"
+                variant="outline"
+                onClick={addLine}
+                className="w-full h-12 text-base"
+              >
+                <Plus className="w-5 h-5 mr-1" /> 품목 추가
+              </Button>
+            )}
           </CardContent>
         </Card>
 
