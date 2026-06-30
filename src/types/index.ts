@@ -60,8 +60,9 @@ export interface Product {
   id: string;
   name: string;
   type: ProductType;
-  thickness: number | null;
+  thickness: number | null;   // 사이즈 (mm)
   width: number | null;
+  purity?: string | null;     // 순도 (예: '99.3% 합금', '99.99% 순알')
   unit: string;
   base_price: number | null;
   is_active: boolean;

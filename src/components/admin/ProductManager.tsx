@@ -38,6 +38,10 @@ export function ProductManager() {
   return (
     <>
       <Toaster position="top-center" />
+      <datalist id="purity-options">
+        <option value="99.3% 합금" />
+        <option value="99.99% 순알" />
+      </datalist>
 
       <div className="flex items-center justify-between mb-4">
         <div className="text-sm text-gray-400">기본 단가는 거래처 협상가가 없을 때 적용됩니다</div>
@@ -80,11 +84,13 @@ function ProductRow({ product: p, onSaved }: { product: Product; onSaved: () => 
   const [unit, setUnit] = useState(p.unit);
   const [thickness, setThickness] = useState(p.thickness != null ? String(p.thickness) : '');
   const [width, setWidth] = useState(p.width != null ? String(p.width) : '');
+  const [purity, setPurity] = useState(p.purity ?? '');
 
   function resetForm() {
     setName(p.name); setType(p.type); setPrice(String(p.base_price ?? 0));
     setUnit(p.unit); setThickness(p.thickness != null ? String(p.thickness) : '');
     setWidth(p.width != null ? String(p.width) : '');
+    setPurity(p.purity ?? '');
   }
 
   async function save() {
@@ -100,6 +106,7 @@ function ProductRow({ product: p, onSaved }: { product: Product; onSaved: () => 
         unit: unit || 'kg',
         thickness: thickness ? parseFloat(thickness) : null,
         width: width ? parseInt(width, 10) : null,
+        purity: purity.trim() || null,
       });
       toast.success(`${name.trim()} 저장`);
       setEditing(false);
@@ -153,6 +160,12 @@ function ProductRow({ product: p, onSaved }: { product: Product; onSaved: () => 
                 <Input value={unit} onChange={(e) => setUnit(e.target.value)}
                   className="bg-[#0f1117] border-[#2a2f3e] text-white h-9 mt-1" />
               </div>
+              <div>
+                <label className="text-[11px] text-gray-400">순도</label>
+                <Input value={purity} onChange={(e) => setPurity(e.target.value)}
+                  list="purity-options" placeholder="예: 99.3% 합금"
+                  className="bg-[#0f1117] border-[#2a2f3e] text-white h-9 mt-1" />
+              </div>
               <div className="grid grid-cols-2 gap-2">
                 <div>
                   <label className="text-[11px] text-gray-400">두께(mm)</label>
@@ -190,6 +203,7 @@ function ProductRow({ product: p, onSaved }: { product: Product; onSaved: () => 
               </div>
               <div className="text-xs text-gray-500 mt-1 space-x-2">
                 {p.thickness != null && <span>두께 {p.thickness}mm</span>}
+                {p.purity && <span>· 순도 {p.purity}</span>}
                 {p.width != null && <span>· 폭 {p.width}mm</span>}
                 <span>· 단위 {p.unit}</span>
               </div>
@@ -225,6 +239,7 @@ function AddProductForm({ onDone }: { onDone: () => void }) {
   const [unit, setUnit] = useState('kg');
   const [thickness, setThickness] = useState('');
   const [width, setWidth] = useState('');
+  const [purity, setPurity] = useState('');
   const [saving, setSaving] = useState(false);
 
   async function submit() {
@@ -237,9 +252,10 @@ function AddProductForm({ onDone }: { onDone: () => void }) {
         name: name.trim(), type, base_price: price, unit: unit || 'kg',
         thickness: thickness ? parseFloat(thickness) : null,
         width: width ? parseInt(width, 10) : null,
+        purity: purity.trim() || null,
       });
       toast.success('품목 추가 완료');
-      setName(''); setBasePrice(''); setThickness(''); setWidth('');
+      setName(''); setBasePrice(''); setThickness(''); setWidth(''); setPurity('');
       setOpen(false);
       onDone();
     } catch (err) {
@@ -288,6 +304,12 @@ function AddProductForm({ onDone }: { onDone: () => void }) {
           <div>
             <label className="text-xs text-gray-400">단위</label>
             <Input value={unit} onChange={(e) => setUnit(e.target.value)} placeholder="kg"
+              className="bg-[#0f1117] border-[#2a2f3e] text-white mt-1" />
+          </div>
+          <div>
+            <label className="text-xs text-gray-400">순도</label>
+            <Input value={purity} onChange={(e) => setPurity(e.target.value)}
+              list="purity-options" placeholder="예: 99.3% 합금"
               className="bg-[#0f1117] border-[#2a2f3e] text-white mt-1" />
           </div>
           <div className="grid grid-cols-2 gap-2">

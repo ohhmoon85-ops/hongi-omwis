@@ -46,6 +46,7 @@ CREATE TABLE IF NOT EXISTS products (
   type VARCHAR(20) NOT NULL CHECK (type IN ('raw','oil','water')),
   thickness DECIMAL(5,2),
   width INTEGER,
+  purity VARCHAR(30),
   unit VARCHAR(10) DEFAULT 'kg',
   base_price INTEGER,
   is_active BOOLEAN DEFAULT true,

@@ -21,7 +21,7 @@ export async function updateProductPrice(id: string, basePrice: number): Promise
   if (error) throw new Error(error.message);
 }
 
-// 품목 전체 항목 수정 (이름·종류·두께·폭·단위·단가)
+// 품목 전체 항목 수정 (이름·종류·두께·폭·순도·단위·단가)
 export async function updateProduct(
   id: string,
   fields: {
@@ -31,6 +31,7 @@ export async function updateProduct(
     unit?: string;
     thickness?: number | null;
     width?: number | null;
+    purity?: string | null;
   },
 ): Promise<void> {
   const supabase = createClient();
@@ -52,6 +53,7 @@ export interface NewProduct {
   unit: string;
   thickness?: number | null;
   width?: number | null;
+  purity?: string | null;
 }
 
 export async function addProduct(p: NewProduct): Promise<void> {
@@ -63,6 +65,7 @@ export async function addProduct(p: NewProduct): Promise<void> {
     unit: p.unit || 'kg',
     thickness: p.thickness ?? null,
     width: p.width ?? null,
+    purity: p.purity ?? null,
     is_active: true,
   });
   if (error) throw new Error(error.message);

@@ -195,7 +195,7 @@ export function OrderForm({ products, customerName, prices }: Props) {
                       >
                         {products.map((p) => (
                           <option key={p.id} value={p.id}>
-                            [{PRODUCT_TYPE_LABEL[p.type]}] {p.name}
+                            [{PRODUCT_TYPE_LABEL[p.type]}] {p.name}{p.purity ? ` · ${p.purity}` : ''}
                           </option>
                         ))}
                       </select>
