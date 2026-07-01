@@ -11,7 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import toast, { Toaster } from 'react-hot-toast';
-import { RefreshCw, Pencil, Plus, PackagePlus } from 'lucide-react';
+import { RefreshCw, Pencil, Plus, PackagePlus, ChevronDown, ChevronRight } from 'lucide-react';
 
 const TYPE_BADGE: Record<ProductType, string> = {
   raw:   'bg-slate-500/20 text-slate-300',
@@ -19,9 +19,22 @@ const TYPE_BADGE: Record<ProductType, string> = {
   water: 'bg-blue-500/20 text-blue-300',
 };
 
+// 트리 그룹 순서 (종류)
+const TYPE_ORDER: ProductType[] = ['raw', 'oil', 'water'];
+const TYPE_ICON: Record<ProductType, string> = { raw: '🪙', oil: '🛢️', water: '💧' };
+
 export function ProductManager() {
   const [products, setProducts] = useState<Product[]>([]);
   const [loaded, setLoaded] = useState(false);
+  const [collapsed, setCollapsed] = useState<Set<ProductType>>(new Set());
+
+  function toggleGroup(t: ProductType) {
+    setCollapsed((prev) => {
+      const next = new Set(prev);
+      if (next.has(t)) next.delete(t); else next.add(t);
+      return next;
+    });
+  }
 
   async function refresh() {
     if (isDevMode) { setProducts(DEV_PRODUCTS); setLoaded(true); return; }
@@ -56,8 +69,8 @@ export function ProductManager() {
         <div className="space-y-6">
           <AddProductForm onDone={refresh} />
 
-          <section className="space-y-2">
-            <h2 className="text-sm font-semibold text-gray-300">품목 목록</h2>
+          <section className="space-y-3">
+            <h2 className="text-sm font-semibold text-gray-300">품목 목록 (종류별)</h2>
             {products.length === 0 ? (
               <Card className="bg-gradient-to-b from-[#181c28] to-[#13161f] border-white/[0.06]">
                 <CardContent className="py-8 text-center text-sm text-gray-500">
@@ -65,7 +78,34 @@ export function ProductManager() {
                 </CardContent>
               </Card>
             ) : (
-              products.map((p) => <ProductRow key={p.id} product={p} onSaved={refresh} />)
+              TYPE_ORDER.map((t) => {
+                const group = products.filter((p) => p.type === t);
+                if (group.length === 0) return null;
+                const activeN = group.filter((p) => p.is_active).length;
+                const open = !collapsed.has(t);
+                return (
+                  <div key={t} className="rounded-xl border border-white/[0.06] overflow-hidden">
+                    {/* 종류 헤더 (트리 루트) */}
+                    <button
+                      onClick={() => toggleGroup(t)}
+                      className="w-full flex items-center gap-2 px-4 py-3 bg-gradient-to-b from-[#181c28] to-[#13161f] hover:from-[#1c2130] text-left"
+                    >
+                      {open ? <ChevronDown className="w-4 h-4 text-gray-400" /> : <ChevronRight className="w-4 h-4 text-gray-400" />}
+                      <span className="text-base">{TYPE_ICON[t]}</span>
+                      <span className="font-semibold text-white">{PRODUCT_TYPE_LABEL[t]}</span>
+                      <span className="text-xs text-gray-500">
+                        {group.length}개 품목 · 판매중 {activeN}
+                      </span>
+                    </button>
+                    {/* 하위 세부 품목 */}
+                    {open && (
+                      <div className="p-2 pl-4 sm:pl-6 space-y-2 bg-black/20 border-t border-white/[0.06]">
+                        {group.map((p) => <ProductRow key={p.id} product={p} onSaved={refresh} />)}
+                      </div>
+                    )}
+                  </div>
+                );
+              })
             )}
           </section>
         </div>
