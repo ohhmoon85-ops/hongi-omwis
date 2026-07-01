@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>OMWIS 개발 현황 보고 — (주)홍지</title>
+<style>
+  @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard@latest/dist/web/static/pretendard.min.css');
+  :root{ --navy:#0b0d13; --navy2:#141823; --gold:#c8962e; --gold-l:#e0bf70; --line:rgba(255,255,255,.08); }
+  *{ box-sizing:border-box; margin:0; padding:0; }
+  html,body{ height:100%; font-family:'Pretendard',system-ui,sans-serif; background:#05070c; color:#e8eaf0; }
+  .gold{ background:linear-gradient(135deg,#f0d488,#c8962e 60%,#a9781f); -webkit-background-clip:text; background-clip:text; color:transparent; }
+  .deck{ height:100vh; overflow:hidden; }
+  .slide{
+    display:none; height:100vh; padding:6vh 8vw; flex-direction:column;
+    background:
+      radial-gradient(1100px 520px at 88% -8%, rgba(200,150,46,.10), transparent 60%),
+      radial-gradient(820px 460px at -6% -6%, rgba(26,61,107,.22), transparent 58%),
+      linear-gradient(180deg,#0d1018,#0a0c12);
+    position:relative;
+  }
+  .slide.active{ display:flex; }
+  .eyebrow{ font-size:.85rem; letter-spacing:.25em; text-transform:uppercase; color:rgba(200,150,46,.85); font-weight:700; margin-bottom:1.2rem; }
+  h1{ font-size:4.6rem; font-weight:800; letter-spacing:-.02em; line-height:1.05; }
+  h2{ font-size:2.7rem; font-weight:800; letter-spacing:-.01em; margin-bottom:2.2rem; }
+  .sub{ font-size:1.15rem; color:#9aa1b2; margin-top:1rem; }
+  .grid{ display:grid; grid-template-columns:1fr 1fr; gap:1rem 1.6rem; }
+  .card{ background:linear-gradient(180deg,#181c28,#13161f); border:1px solid var(--line); border-radius:14px; padding:1.1rem 1.3rem; }
+  .card b{ color:#fff; font-size:1.08rem; }
+  .card p{ color:#9aa1b2; font-size:.92rem; margin-top:.25rem; line-height:1.5; }
+  ul.big{ list-style:none; display:flex; flex-direction:column; gap:1rem; }
+  ul.big li{ font-size:1.3rem; padding-left:2.2rem; position:relative; color:#dfe3ec; line-height:1.4; }
+  ul.big li::before{ content:'●'; position:absolute; left:0; color:var(--gold); font-size:.9rem; top:.25rem; }
+  ul.big li small{ display:block; color:#8b93a6; font-size:.95rem; margin-top:.15rem; }
+  .metrics{ display:flex; gap:1.2rem; margin-top:2.5rem; flex-wrap:wrap; }
+  .metric{ background:rgba(200,150,46,.08); border:1px solid rgba(200,150,46,.25); border-radius:14px; padding:1.2rem 1.6rem; min-width:150px; }
+  .metric .n{ font-size:2.4rem; font-weight:800; } .metric .l{ color:#9aa1b2; font-size:.85rem; margin-top:.2rem; }
+  .ok li::before{ content:'✔'; color:#34d399; }
+  .todo li::before{ content:'▸'; color:var(--gold-l); }
+  .note{ margin-top:2rem; padding:1rem 1.3rem; border-left:3px solid var(--gold); background:rgba(200,150,46,.06); border-radius:0 10px 10px 0; color:#c9cfdb; font-size:1rem; }
+  .foot{ position:absolute; bottom:3.5vh; left:8vw; right:8vw; display:flex; justify-content:space-between; align-items:center; color:#5b6376; font-size:.8rem; border-top:1px solid var(--line); padding-top:1rem; }
+  .nav{ position:fixed; bottom:18px; left:50%; transform:translateX(-50%); display:flex; gap:8px; z-index:10; }
+  .dot{ width:9px; height:9px; border-radius:50%; background:#2a2f3e; cursor:pointer; border:none; }
+  .dot.on{ background:var(--gold); width:24px; border-radius:5px; }
+  .hint{ position:fixed; bottom:16px; right:20px; color:#4b5162; font-size:.75rem; z-index:10; }
+  @media print{
+    @page{ size:1280px 720px; margin:0; }
+    html,body,.deck{ height:auto; overflow:visible; }
+    .slide{ display:flex !important; height:720px; page-break-after:always; }
+    .nav,.hint{ display:none; }
+  }
+</style>
+</head>
+<body>
+<div class="deck">
+
+  <!-- 1 -->
+  <section class="slide active">
+    <div style="margin:auto 0;">
+      <div class="eyebrow">(주)홍지 · 개발 현황 보고</div>
+      <h1><span class="gold">OMWIS</span></h1>
+      <div class="sub" style="font-size:1.6rem; color:#dfe3ec; margin-top:1.4rem;">주문 · 배송 · 창고 · 재고 통합 관리 시스템</div>
+      <div class="sub">PCB용 알루미늄 엔트리시트 D2C 사업을 하나의 시스템으로</div>
+      <div class="metrics">
+        <div class="metric"><div class="n gold">실서버</div><div class="l">클라우드 배포 운영 중</div></div>
+        <div class="metric"><div class="n gold">실시간</div><div class="l">주문·재고·현황 동기화</div></div>
+        <div class="metric"><div class="n gold">5계층</div><div class="l">권한 보안 격리</div></div>
+      </div>
+    </div>
+    <div class="foot"><span>hongi-omwis.vercel.app</span><span>2026-07-01 · 개발팀</span></div>
+  </section>
+
+  <!-- 2 -->
+  <section class="slide">
+    <div class="eyebrow">01 — 무엇을 만들었나</div>
+    <h2>주문부터 재고·세금계산서까지 <span class="gold">한 시스템</span></h2>
+    <div class="grid">
+      <div class="card"><b>🛒 거래처 온라인 주문</b><p>거래처가 직접 주문 → 관리자 화면에 실시간 자동 표시·알림</p></div>
+      <div class="card"><b>✅ 주문 처리·출고</b><p>승인·거절·출고, 출고 시 재고 자동 차감(FIFO), 반품 처리</p></div>
+      <div class="card"><b>🧾 전자세금계산서</b><p>부가세 자동계산, 발행·인쇄·PDF (팝빌 연동 준비)</p></div>
+      <div class="card"><b>📦 재고 관리</b><p>입고·Lot, 안전재고 경보, 소진 예측, 수입신고필증 첨부</p></div>
+      <div class="card"><b>💰 유연한 단가</b><p>거래처별 협상가 우선 적용 + 서버 가격검증(위·변조 방지)</p></div>
+      <div class="card"><b>📊 실시간 대시보드</b><p>오늘 주문·매출·미수금·재고경보 KPI + 그래프, 회장 모니터링</p></div>
+    </div>
+  </section>
+
+  <!-- 3 -->
+  <section class="slide">
+    <div class="eyebrow">02 — 사업적 가치</div>
+    <h2>왜 좋은가</h2>
+    <ul class="big">
+      <li>인건비 절감 <small>주문 접수·재고 대사·세금계산서 발행을 자동화 → 수작업 최소화</small></li>
+      <li>실시간 가시성 <small>회장·대표가 언제든 휴대폰으로 전사 현황을 열람</small></li>
+      <li>수입 원가 경쟁력 <small>ACIS 수입신호로 알루미늄 구매 타이밍 판단 → 원가 최적화</small></li>
+      <li>확장성 <small>거래처·품목·직원이 늘어도 구조 변경 없이 수용</small></li>
+      <li>보안 <small>회장 / 대표 / 운영 / 거래처 — 5계층 권한으로 각자 필요한 것만</small></li>
+    </ul>
+  </section>
+
+  <!-- 4 -->
+  <section class="slide">
+    <div class="eyebrow">03 — 현재 상태</div>
+    <h2>이미 <span class="gold">실서버에서 동작</span>합니다</h2>
+    <ul class="big ok">
+      <li>시스템 개발 · 클라우드 배포 완료 — 실서버 운영 중</li>
+      <li>주문 → 실시간 접수 → 승인 → 세금계산서 → 출고 → 재고차감 전 흐름 검증</li>
+      <li>실 품목 카탈로그 등록 — 알루미늄 1050 H18 (종류 × 사이즈 × 순도)</li>
+      <li>모바일 · 주간/야간 테마 대응</li>
+      <li>자동화 — 데일리(18시)·주간(월 9시) 경영요약 이메일, 카카오 알림톡</li>
+    </ul>
+  </section>
+
+  <!-- 5 -->
+  <section class="slide">
+    <div class="eyebrow">04 — 정식 오픈까지</div>
+    <h2>남은 일 &amp; 요청</h2>
+    <ul class="big todo">
+      <li>실제 단가표 입력 <small>현재 생알미늄만 예시가 — 전 품목 실단가 반영</small></li>
+      <li>외부 연동 키 확보 <small>카카오 알림톡 · 팝빌 세금계산서 · 이메일 발송 계정</small></li>
+      <li>거래처 실계정 발급 + 접속주소 공유 <small>발급 화면 준비 완료 → 즉시 가능</small></li>
+      <li>(2단계) 법인통장 · 세금계산서 API 연동 <small>수입 결제·정산 자동화</small></li>
+    </ul>
+    <div class="note"><b>핵심:</b> 남은 항목은 개발이 아니라 <b>운영 정보·외부 계정 확보</b>의 문제입니다. 자료만 확보되면 단기 반영 → 정식 오픈 가능합니다.</div>
+    <div class="foot"><span>시연: hongi-omwis.vercel.app → 회장 모니터링</span><span>OMWIS · (주)홍지</span></div>
+  </section>
+
+</div>
+
+<div class="nav" id="nav"></div>
+<div class="hint">← → 방향키 · 클릭으로 넘김 · Ctrl+P로 PDF 저장</div>
+
+<script>
+  const slides=[...document.querySelectorAll('.slide')];
+  const nav=document.getElementById('nav'); let i=0;
+  slides.forEach((_,idx)=>{ const b=document.createElement('button'); b.className='dot'; b.onclick=()=>go(idx); nav.appendChild(b); });
+  const dots=[...nav.children];
+  function go(n){ i=Math.max(0,Math.min(slides.length-1,n));
+    slides.forEach((s,x)=>s.classList.toggle('active',x===i));
+    dots.forEach((d,x)=>d.classList.toggle('on',x===i)); }
+  document.addEventListener('keydown',e=>{ if(e.key==='ArrowRight'||e.key===' ')go(i+1); if(e.key==='ArrowLeft')go(i-1); });
+  document.querySelector('.deck').addEventListener('click',e=>{ if(e.clientX < innerWidth*0.25) go(i-1); else go(i+1); });
+  go(0);
+</script>
+</body>
+</html>
