@@ -35,28 +35,28 @@ const supabase = createClient(SUPABASE_URL, SERVICE_KEY, {
 // Supabase 기본 최소 비번 길이 6자 정책 충족
 const DEV_PASSWORD = 'omwis1234';
 
-// ─── 정본 4계정 — 모두 @hongi.co.kr / @samscb.kr 통일 ──────────────────────
+// ─── 정본 4계정 — 모두 @hongjee.co.kr / @samscb.kr 통일 ──────────────────────
 // 2026-06-27: 배송 모델 단순화로 driver 역할 제거 → 4계정으로 축소.
 const USERS = [
-  { email: 'chairman@hongi.co.kr', password: DEV_PASSWORD, role: 'chairman',    name: '홍지 회장' },
-  { email: 'admin@hongi.co.kr',    password: DEV_PASSWORD, role: 'super_admin', name: '변지수 (대표)' },
-  { email: 'ops@hongi.co.kr',      password: DEV_PASSWORD, role: 'admin',       name: '운영 직원' },
+  { email: 'chairman@hongjee.co.kr', password: DEV_PASSWORD, role: 'chairman',    name: '홍지 회장' },
+  { email: 'admin@hongjee.co.kr',    password: DEV_PASSWORD, role: 'super_admin', name: '변지수 (대표)' },
+  { email: 'ops@hongjee.co.kr',      password: DEV_PASSWORD, role: 'admin',       name: '운영 직원' },
   { email: 'customer@samscb.kr',   password: DEV_PASSWORD, role: 'customer',    name: '김민수',
     customer_company: '(주)삼성회로기판' },
 ];
 
 // ─── 자동 정리: 구버전 시드의 흔적 ─────────────────────────────────────────
 // 같은 역할을 위 USERS 목록에서 다른 이메일로 통합했기 때문에 정리 대상.
-// driver@hongi.co.kr 은 004 마이그레이션에서 admin 으로 일괄 전환되지만,
+// driver@hongjee.co.kr 은 004 마이그레이션에서 admin 으로 일괄 전환되지만,
 // 여기서도 명시적으로 정리 — DB 의 user_profiles 행은 정리 안 함 (히스토리 보존).
 // 정본과 충돌하지 않는 사용자 정의 계정은 영향 받지 않음.
 const OBSOLETE_EMAILS = [
-  'byun@hongi.co.kr',         // → admin@hongi.co.kr (super_admin)
+  'byun@hongjee.co.kr',         // → admin@hongjee.co.kr (super_admin)
   'driver@hongi.test',        // → 제거 (driver 역할 자체 폐기)
-  'driver@hongi.co.kr',       // → 제거 (driver 역할 자체 폐기)
+  'driver@hongjee.co.kr',       // → 제거 (driver 역할 자체 폐기)
   'kim@samscb.kr',            // → customer@samscb.kr
-  'chairman@hongi.test',      // → chairman@hongi.co.kr
-  'admin@hongi.test',         // → ops@hongi.co.kr
+  'chairman@hongi.test',      // → chairman@hongjee.co.kr
+  'admin@hongi.test',         // → ops@hongjee.co.kr
 ];
 
 async function ensureCustomerId(companyName) {

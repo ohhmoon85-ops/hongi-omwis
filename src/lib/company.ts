@@ -10,7 +10,7 @@ export const SUPPLIER = {
   address:   process.env.SUPPLIER_ADDRESS    ?? '',
   bizType:   process.env.SUPPLIER_BIZ_TYPE   ?? '제조',
   bizItem:   process.env.SUPPLIER_BIZ_ITEM   ?? '알루미늄',
-  email:     process.env.SUPPLIER_EMAIL      ?? 'tax@hongi.co.kr',
+  email:     process.env.SUPPLIER_EMAIL      ?? 'tax@hongjee.co.kr',
 } as const;
 
 // 자사 사업자번호가 실제 값으로 채워졌는지 (실발행 전제조건 중 하나)

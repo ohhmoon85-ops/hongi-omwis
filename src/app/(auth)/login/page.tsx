@@ -158,7 +158,7 @@ function LoginForm() {
             onChange={(e) => setEmail(e.target.value)}
             required
             className="bg-[#0f1117] border-[#2a2f3e] text-white mt-1"
-            placeholder={isDevMode ? '1234' : 'user@hongi.co.kr'}
+            placeholder={isDevMode ? '1234' : 'user@hongjee.co.kr'}
           />
         </div>
 

@@ -46,7 +46,7 @@ Vercel 대시보드 → `hongi-omwis` 프로젝트 → **Settings** → **Enviro
 | Key | Value | 발급 |
 |---|---|---|
 | `RESEND_API_KEY` | `re_xxx...` | https://resend.com |
-| `RESEND_FROM_EMAIL` | `noreply@hongi.co.kr` (또는 검증된 도메인) | Resend 콘솔에서 도메인 검증 필요 |
+| `RESEND_FROM_EMAIL` | `noreply@hongjee.co.kr` (또는 검증된 도메인) | Resend 콘솔에서 도메인 검증 필요 |
 
 ### 세금계산서 (팝빌 + 공급자 정보)
 
@@ -58,7 +58,7 @@ Vercel 대시보드 → `hongi-omwis` 프로젝트 → **Settings** → **Enviro
 | `SUPPLIER_ADDRESS` | (사업장 주소) | |
 | `SUPPLIER_BIZ_TYPE` | `제조` | |
 | `SUPPLIER_BIZ_ITEM` | `알루미늄` | |
-| `SUPPLIER_EMAIL` | `tax@hongi.co.kr` | |
+| `SUPPLIER_EMAIL` | `tax@hongjee.co.kr` | |
 | `POPBILL_LINK_ID` | 팝빌 발급 | https://www.popbill.com — 미설정 시 데모 발행 |
 | `POPBILL_SECRET` | 팝빌 발급 | 동일 |
 
@@ -76,9 +76,9 @@ Vercel 대시보드 → `hongi-omwis` 프로젝트 → **Settings** → **Enviro
 
 Vercel 배포 후 다음 확인:
 
-1. **로그인 가능** — `https://hongi-omwis.vercel.app/login` 에서 `byun@hongi.co.kr` / `1234` 로 로그인 → `/admin/dashboard` 로 이동
+1. **로그인 가능** — `https://hongi-omwis.vercel.app/login` 에서 `byun@hongjee.co.kr` / `1234` 로 로그인 → `/admin/dashboard` 로 이동
 2. **거래처 주문 흐름** — `customer@samscb.kr` 로 로그인 → 주문 제출 → 어드민 화면에서 실시간 표시
-3. **회장 모니터** — `chairman@hongi.co.kr` 로 로그인 → ACIS 카드에 SHFE/LME 실 데이터, MarketsWidget 4타일 표시 (MOCK 라벨 없어야 함)
+3. **회장 모니터** — `chairman@hongjee.co.kr` 로 로그인 → ACIS 카드에 SHFE/LME 실 데이터, MarketsWidget 4타일 표시 (MOCK 라벨 없어야 함)
 4. **알림 audit** — `/admin/notifications` 에 발송 이력 적재
 5. **cron** — Vercel 대시보드 → Cron Jobs 탭에 `weekly-summary` `daily-summary` 2개 보임. "Trigger" 버튼으로 수동 테스트 가능
 6. **카카오 실발송** (선택) — 주문 승인 → 거래처 카카오톡에 알림톡 도착 (템플릿 등록 + 4개 키 셋업 후)
