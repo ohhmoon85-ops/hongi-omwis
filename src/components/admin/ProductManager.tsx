@@ -23,6 +23,23 @@ const TYPE_BADGE: Record<ProductType, string> = {
 const TYPE_ORDER: ProductType[] = ['raw', 'oil', 'water'];
 const TYPE_ICON: Record<ProductType, string> = { raw: '🪙', oil: '🛢️', water: '💧' };
 
+/** 현재 판매 상태 표시 (눌리지 않는 배지 — 동작 버튼과 분리) */
+function SaleStatusBadge({ active }: { active: boolean }) {
+  return (
+    <span
+      className={`inline-flex items-center gap-1.5 text-[11px] font-semibold px-2 py-0.5 rounded-full border ${
+        active
+          ? 'bg-green-500/15 text-green-400 border-green-500/30'
+          : 'bg-gray-500/15 text-gray-400 border-gray-500/30'
+      }`}
+      title={active ? '거래처 주문 화면에 노출 중' : '거래처 주문 화면에 숨김'}
+    >
+      <span className={`w-1.5 h-1.5 rounded-full ${active ? 'bg-green-400' : 'bg-gray-400'}`} />
+      {active ? '판매중' : '판매중지'}
+    </span>
+  );
+}
+
 export function ProductManager() {
   const [products, setProducts] = useState<Product[]>([]);
   const [loaded, setLoaded] = useState(false);
@@ -159,9 +176,16 @@ function ProductRow({ product: p, onSaved }: { product: Product; onSaved: () => 
   }
 
   async function toggleActive() {
+    const goStop = p.is_active; // 판매중 → 중지로 전환
+    const ok = window.confirm(
+      goStop
+        ? `"${p.name}"\n판매를 중지할까요? 거래처 주문 화면에서 즉시 사라집니다.`
+        : `"${p.name}"\n판매를 개시할까요? 거래처 주문 화면에 노출됩니다.`
+    );
+    if (!ok) return;
     try {
       await setProductActive(p.id, !p.is_active);
-      toast.success(p.is_active ? '판매 중지' : '판매 재개');
+      toast.success(goStop ? '판매 중지되었습니다' : '판매 개시되었습니다');
       onSaved();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : '변경 실패');
@@ -239,7 +263,7 @@ function ProductRow({ product: p, onSaved }: { product: Product; onSaved: () => 
                   {PRODUCT_TYPE_LABEL[p.type]}
                 </span>
                 <span className="text-sm font-semibold">{p.name}</span>
-                {!p.is_active && <span className="text-[11px] text-gray-500">판매중지</span>}
+                <SaleStatusBadge active={p.is_active} />
               </div>
               <div className="text-xs text-gray-500 mt-1 space-x-2">
                 {p.thickness != null && <span>두께 {p.thickness}mm</span>}
@@ -259,9 +283,10 @@ function ProductRow({ product: p, onSaved }: { product: Product; onSaved: () => 
               </button>
               <button
                 onClick={toggleActive}
-                className={`text-xs px-2 py-1 rounded border ${p.is_active ? 'border-red-500/30 text-red-400 hover:bg-red-500/10' : 'border-green-500/30 text-green-400 hover:bg-green-500/10'}`}
+                title={p.is_active ? '판매를 중지합니다' : '판매를 개시합니다'}
+                className={`text-xs font-medium px-3 py-1.5 rounded-md border transition-colors ${p.is_active ? 'border-red-500/40 text-red-300 hover:bg-red-500/15' : 'border-green-500/40 text-green-300 hover:bg-green-500/15'}`}
               >
-                {p.is_active ? '판매 중지' : '판매 재개'}
+                {p.is_active ? '판매 중지로 전환' : '판매 개시로 전환'}
               </button>
             </div>
           </div>
