@@ -2,9 +2,10 @@
 // 개발 모드 검수 저장소 — localStorage 기반
 // Supabase 미연결 환경에서 IQC 전 흐름을 테스트할 수 있도록 제공.
 // PASS 시 dev-inventory(간이 mock)에도 lot 을 함께 추가한다.
+// vendor_sample 검수는 재고 미등록, 상용 조건 스냅샷만 보존.
 // ============================================================================
 
-import type { Inspection, IqcSkuPreset } from '@/types';
+import type { Inspection, IqcSkuPreset, InspectionPurpose } from '@/types';
 import { presetToProductName } from '@/lib/iqc-presets';
 
 const INSPECTION_KEY = 'omwis_dev_inspections';
@@ -30,6 +31,16 @@ export function saveDevInspection(insp: Inspection) {
 
 export function getDevInspection(id: string): Inspection | null {
   return loadDevInspections().find((i) => i.id === id) ?? null;
+}
+
+// 특정 목적(incoming/vendor_sample) 만 필터
+export function loadDevInspectionsByPurpose(purpose: InspectionPurpose): Inspection[] {
+  return loadDevInspections().filter((i) => (i.purpose ?? 'incoming') === purpose);
+}
+
+// 특정 후보 업체의 검수만 (compare 페이지용)
+export function loadDevInspectionsByVendor(vendorId: string): Inspection[] {
+  return loadDevInspections().filter((i) => i.candidate_vendor_id === vendorId);
 }
 
 // ─── Inventory (mock — IQC PASS 로 등록된 lot 만 저장) ───────────────────────
