@@ -12,6 +12,7 @@
 import { createClient } from '@/lib/supabase/client';
 
 export const CUSTOMS_DOCS_BUCKET = 'customs-docs';
+export const INSPECTION_PHOTOS_BUCKET = 'inspection-photos';
 
 export interface UploadResult {
   path: string;        // 버킷 내 경로 (예: 2026/03/abc.jpg)
@@ -68,4 +69,54 @@ export async function getCustomsDocUrl(path: string): Promise<string | null> {
 export async function deleteCustomsDoc(path: string): Promise<void> {
   const supabase = createClient();
   await supabase.storage.from(CUSTOMS_DOCS_BUCKET).remove([path]);
+}
+
+// ─── IQC 검수 사진 ─────────────────────────────────────────────────────────
+// 검수 시점에 다수의 사진을 업로드하고 path[] 를 inspections.photo_urls 에 저장.
+// 상세 화면에서 signed URL 로 렌더링.
+
+/** 검수 사진 업로드 (private bucket) — path 반환. 여러 장 병렬 업로드 지원. */
+export async function uploadInspectionPhoto(file: File): Promise<UploadResult> {
+  const supabase = createClient();
+  const path = makePath(file.name);
+  const { error: upErr } = await supabase.storage
+    .from(INSPECTION_PHOTOS_BUCKET)
+    .upload(path, file, {
+      cacheControl: '3600',
+      upsert: false,
+      contentType: file.type,
+    });
+  if (upErr) throw new Error(upErr.message);
+
+  const { data, error: sErr } = await supabase.storage
+    .from(INSPECTION_PHOTOS_BUCKET)
+    .createSignedUrl(path, 3600);
+  if (sErr) throw new Error(sErr.message);
+  return { path, signedUrl: data?.signedUrl };
+}
+
+/** 여러 검수 사진 path 를 한 번에 서명 URL 로 변환 */
+export async function getInspectionPhotoUrls(
+  paths: string[],
+): Promise<Array<{ path: string; url: string | null }>> {
+  const supabase = createClient();
+  return Promise.all(
+    paths.map(async (path) => {
+      try {
+        const { data, error } = await supabase.storage
+          .from(INSPECTION_PHOTOS_BUCKET)
+          .createSignedUrl(path, 3600);
+        if (error) return { path, url: null };
+        return { path, url: data?.signedUrl ?? null };
+      } catch {
+        return { path, url: null };
+      }
+    }),
+  );
+}
+
+/** 검수 사진 단건 삭제 (오적재 정리 등) */
+export async function deleteInspectionPhoto(path: string): Promise<void> {
+  const supabase = createClient();
+  await supabase.storage.from(INSPECTION_PHOTOS_BUCKET).remove([path]);
 }

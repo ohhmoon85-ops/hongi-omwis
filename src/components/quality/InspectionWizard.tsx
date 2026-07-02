@@ -23,6 +23,8 @@ import {
 } from '@/lib/iqc-checklists';
 import { computeVerdict } from '@/lib/iqc-verdict';
 import { presetToProductName } from '@/lib/iqc-presets';
+import { fetchInspectionSpec, DEFAULT_SPEC } from '@/lib/inspection-specs';
+import { uploadInspectionPhoto } from '@/lib/storage';
 import type {
   IqcSkuPreset, ChecklistItem, CheckResult, Inspection, Verdict,
 } from '@/types';
@@ -32,20 +34,29 @@ import { ThicknessGauge } from './ThicknessGauge';
 import { TriCheck } from './TriCheck';
 import {
   ClipboardCheck, PackagePlus, AlertTriangle, CheckCircle2,
-  ChevronRight, ArrowLeft,
+  ChevronRight, ArrowLeft, Camera, X as XIcon, Upload,
 } from 'lucide-react';
 
-const DEFAULT_THICKNESS_TOL = 0.005;
-const DEFAULT_WIDTH_PLUS = 1.0;
-const DEFAULT_WIDTH_MINUS = 0.0;
-
 type Step = 'sku' | 'inspect' | 'registered';
+
+interface ActiveSpec {
+  thickness_tol: number;
+  width_plus: number;
+  width_minus: number;
+  source: 'default' | 'custom';   // UI 배지 표시용
+}
 
 export function InspectionWizard() {
   const router = useRouter();
 
   const [step, setStep] = useState<Step>('sku');
   const [preset, setPreset] = useState<IqcSkuPreset | null>(null);
+  const [spec, setSpec] = useState<ActiveSpec>({
+    thickness_tol: DEFAULT_SPEC.thickness_tol,
+    width_plus:    DEFAULT_SPEC.width_plus,
+    width_minus:   DEFAULT_SPEC.width_minus,
+    source: 'default',
+  });
 
   // 검수 폼 상태 (Step 2)
   const [lotNumber, setLotNumber] = useState('');
@@ -61,37 +72,109 @@ export function InspectionWizard() {
   const [lookChecks, setLookChecks] = useState<ChecklistItem[]>([]);
   const [memo, setMemo] = useState('');
   const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  // 사진 슬롯 — { path?: Supabase 저장 경로, preview: object URL, uploading }
+  const [photos, setPhotos] = useState<Array<{
+    id: string; path: string | null; preview: string; uploading: boolean;
+  }>>([]);
 
   // 재고 등록 (STEP 3)
   const [quantityKg, setQuantityKg] = useState('');
   const [savedInspection, setSavedInspection] = useState<Inspection | null>(null);
 
-  function selectSku(p: IqcSkuPreset) {
+  async function selectSku(p: IqcSkuPreset) {
     setPreset(p);
     setMillChecks(buildMillChecks());
     setLookChecks(buildLookChecks(p.type));
     setStep('inspect');
+
+    // 품목별 검수 기준 로드 (있으면 오버라이드, 없으면 기본값 유지)
+    // 운영 모드에서만 조회 — dev 모드는 SKU 프리셋 code 라 매칭 불가
+    if (!isDevMode) {
+      try {
+        // NOTE: p.code 는 프리셋 코드 (예: 'raw-010-540') — 실 product_id 아님.
+        // seed-real-products.sql 의 name 규칙으로 매칭해야 하나, 편의상 이번
+        // 이터레이션에서는 DEFAULT 유지. 후속: SKU→product_id lookup 매핑 추가.
+        const s = await fetchInspectionSpec(p.code).catch(() => null);
+        if (s) {
+          setSpec({
+            thickness_tol: s.thickness_tol,
+            width_plus:    s.width_plus,
+            width_minus:   s.width_minus,
+            source: 'custom',
+          });
+          return;
+        }
+      } catch { /* silent — 기본값 유지 */ }
+    }
+    setSpec({
+      thickness_tol: DEFAULT_SPEC.thickness_tol,
+      width_plus:    DEFAULT_SPEC.width_plus,
+      width_minus:   DEFAULT_SPEC.width_minus,
+      source: 'default',
+    });
   }
 
   const verdictResult = useMemo(() => {
     if (!preset) return null;
     return computeVerdict({
       targetThickness: preset.thickness,
-      thicknessTol: DEFAULT_THICKNESS_TOL,
+      thicknessTol: spec.thickness_tol,
       thicknessPoints,
       targetWidth: preset.width,
-      widthPlus: DEFAULT_WIDTH_PLUS,
-      widthMinus: DEFAULT_WIDTH_MINUS,
+      widthPlus: spec.width_plus,
+      widthMinus: spec.width_minus,
       widthMeasured: widthMeasured.trim() === '' ? null : parseFloat(widthMeasured),
       millChecks,
       lookChecks,
     });
-  }, [preset, thicknessPoints, widthMeasured, millChecks, lookChecks]);
+  }, [preset, spec, thicknessPoints, widthMeasured, millChecks, lookChecks]);
 
   function updateCheck(list: 'mill' | 'look', idx: number, r: CheckResult) {
     const target = list === 'mill' ? millChecks : lookChecks;
     const setter = list === 'mill' ? setMillChecks : setLookChecks;
     setter(target.map((c, i) => (i === idx ? { ...c, r } : c)));
+  }
+
+  // 사진 첨부 — 파일 선택 즉시 preview 표시 + 백그라운드 업로드
+  async function addPhotos(files: FileList | null) {
+    if (!files || files.length === 0) return;
+    const list = Array.from(files);
+    // preview 즉시 표시
+    const newSlots = list.map((f) => ({
+      id: crypto.randomUUID(),
+      path: null as string | null,
+      preview: URL.createObjectURL(f),
+      uploading: !isDevMode,
+    }));
+    setPhotos((prev) => [...prev, ...newSlots]);
+
+    // dev 모드에서는 업로드 안 함 (preview 만 유지)
+    if (isDevMode) return;
+
+    setUploading(true);
+    // 병렬 업로드
+    await Promise.all(list.map(async (file, i) => {
+      const slotId = newSlots[i].id;
+      try {
+        const { path } = await uploadInspectionPhoto(file);
+        setPhotos((prev) => prev.map((p) =>
+          p.id === slotId ? { ...p, path, uploading: false } : p,
+        ));
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : `${file.name} 업로드 실패`);
+        setPhotos((prev) => prev.filter((p) => p.id !== slotId));
+      }
+    }));
+    setUploading(false);
+  }
+
+  function removePhoto(id: string) {
+    setPhotos((prev) => {
+      const target = prev.find((p) => p.id === id);
+      if (target) URL.revokeObjectURL(target.preview);
+      return prev.filter((p) => p.id !== id);
+    });
   }
 
   async function saveInspection() {
@@ -106,6 +189,13 @@ export function InspectionWizard() {
     }
     setSaving(true);
 
+    // 아직 업로드 중인 사진이 있으면 대기
+    if (photos.some((p) => p.uploading)) {
+      toast.error('사진 업로드 완료 후 저장해 주세요');
+      return;
+    }
+    const photoPaths = photos.map((p) => p.path).filter((p): p is string => !!p);
+
     const now = new Date().toISOString();
     const insp: Inspection = {
       id: crypto.randomUUID(),
@@ -118,12 +208,12 @@ export function InspectionWizard() {
       inspector: inspector.trim() || null,
       inspected_at: new Date().toISOString().slice(0, 10),
       thickness_points: thicknessPoints,
-      thickness_tol: DEFAULT_THICKNESS_TOL,
+      thickness_tol: spec.thickness_tol,
       width_measured: widthMeasured.trim() === '' ? null : parseFloat(widthMeasured),
       weight_measured: weightMeasured.trim() === '' ? null : parseFloat(weightMeasured),
       mill_checks: millChecks,
       look_checks: lookChecks,
-      photo_urls: [],
+      photo_urls: photoPaths,
       memo: memo.trim() || null,
       verdict: verdictResult.verdict === 'PASS' ? 'PASS' : 'FAIL',
       created_at: now,
@@ -150,6 +240,7 @@ export function InspectionWizard() {
             weight_measured: insp.weight_measured,
             mill_checks: insp.mill_checks,
             look_checks: insp.look_checks,
+            photo_urls: insp.photo_urls,
             memo: insp.memo,
             verdict: insp.verdict,
             register_inventory: false,   // 재고 등록은 별도 버튼
@@ -246,6 +337,13 @@ export function InspectionWizard() {
                 <div className="text-xs text-gray-400 mt-0.5">
                   기준 두께 {preset.thickness.toFixed(3)}mm · 폭 {preset.width}mm · {preset.purity}
                 </div>
+                <div className="text-[10px] text-gray-500 mt-0.5">
+                  검수 기준:
+                  <span className={spec.source === 'custom' ? 'text-green-300' : 'text-gray-400'}>
+                    {' '}{spec.source === 'custom' ? '개별 설정' : '기본값'}
+                  </span>
+                  {' · '}공차 ±{spec.thickness_tol}mm · 폭 +{spec.width_plus}/-{spec.width_minus}
+                </div>
               </div>
               <button
                 onClick={() => { setPreset(null); setStep('sku'); }}
@@ -298,7 +396,7 @@ export function InspectionWizard() {
             <CardContent>
               <ThicknessGauge
                 target={preset.thickness}
-                tolerance={DEFAULT_THICKNESS_TOL}
+                tolerance={spec.thickness_tol}
                 values={thicknessPoints}
                 onChange={setThicknessPoints}
               />
@@ -313,7 +411,7 @@ export function InspectionWizard() {
             <CardContent className="grid grid-cols-2 gap-3">
               <div>
                 <Label className="text-xs text-gray-400">
-                  실측 폭 (기준 {preset.width}, 허용 +{DEFAULT_WIDTH_PLUS}/-{DEFAULT_WIDTH_MINUS})
+                  실측 폭 (기준 {preset.width}, 허용 +{spec.width_plus}/-{spec.width_minus})
                 </Label>
                 <Input type="number" inputMode="decimal" step="0.1" value={widthMeasured}
                   onChange={(e) => setWidthMeasured(e.target.value)}
@@ -351,6 +449,69 @@ export function InspectionWizard() {
               {lookChecks.map((c, i) => (
                 <TriCheck key={i} item={c} onChange={(r) => updateCheck('look', i, r)} />
               ))}
+            </CardContent>
+          </Card>
+
+          {/* 사진 첨부 */}
+          <Card className="bg-gradient-to-b from-[#181c28] to-[#13161f] border-white/[0.06]">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm text-gray-200 flex items-center gap-1.5">
+                📸 검수 사진
+                {uploading && <span className="text-[10px] text-amber-300 font-normal">업로드 중...</span>}
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {photos.length > 0 && (
+                <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+                  {photos.map((ph) => (
+                    <div key={ph.id} className="relative aspect-square rounded-md overflow-hidden bg-[#0f1117] border border-[#2a2f3e]">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={ph.preview} alt="검수 사진" className="w-full h-full object-cover" />
+                      {ph.uploading && (
+                        <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
+                          <Upload className="w-5 h-5 text-white animate-pulse" />
+                        </div>
+                      )}
+                      {ph.path && (
+                        <div className="absolute bottom-1 left-1 text-[9px] px-1 rounded bg-green-500/80 text-white">
+                          ✓
+                        </div>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => removePhoto(ph.id)}
+                        className="absolute top-1 right-1 p-1 bg-black/60 text-white rounded-full hover:bg-red-500/80"
+                        aria-label="사진 제거"
+                      >
+                        <XIcon className="w-3 h-3" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <label className="cursor-pointer">
+                <div className={`border-2 border-dashed rounded-lg h-16 flex items-center justify-center text-sm gap-2 transition ${
+                  photos.length > 0
+                    ? 'border-[#2a2f3e] text-gray-500 hover:border-[#c8962e]/40'
+                    : 'border-[#c8962e]/40 text-[#e0bf70] hover:border-[#c8962e]'
+                }`}>
+                  <Camera className="w-5 h-5" />
+                  {photos.length > 0 ? '사진 추가' : '사진 촬영/선택 (여러 장 가능)'}
+                </div>
+                <input
+                  type="file"
+                  accept="image/*"
+                  capture="environment"
+                  multiple
+                  onChange={(e) => addPhotos(e.target.files)}
+                  className="sr-only"
+                />
+              </label>
+              <p className="text-[10px] text-gray-500">
+                {isDevMode
+                  ? '🛠️ 개발 모드: 사진은 미리보기만 됩니다 (Supabase 연결 시 실 업로드).'
+                  : '성적서·라벨·외관 결함 등 근거 사진을 첨부하세요. 클레임·회장 조회 시 근거로 사용됩니다.'}
+              </p>
             </CardContent>
           </Card>
 

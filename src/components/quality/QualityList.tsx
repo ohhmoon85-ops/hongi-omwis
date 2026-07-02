@@ -14,7 +14,7 @@ import type { Inspection } from '@/types';
 import { VERDICT_BADGE } from '@/types';
 import { Card, CardContent } from '@/components/ui/card';
 import toast, { Toaster } from 'react-hot-toast';
-import { RefreshCw, Search, BarChart3 } from 'lucide-react';
+import { RefreshCw, Search, BarChart3, Sliders } from 'lucide-react';
 
 export function QualityList() {
   const [items, setItems] = useState<Inspection[]>([]);
@@ -94,6 +94,12 @@ export function QualityList() {
           className="inline-flex items-center gap-1 px-3 py-1.5 text-xs rounded-lg bg-[#c8962e]/15 text-[#e0bf70] border border-[#c8962e]/30 hover:bg-[#c8962e]/25"
         >
           <BarChart3 className="w-3.5 h-3.5" /> 품질 통계
+        </Link>
+        <Link
+          href="/admin/quality/specs"
+          className="inline-flex items-center gap-1 px-3 py-1.5 text-xs rounded-lg bg-[#171b26] text-gray-300 border border-[#2a2f3e] hover:border-[#1a3d6b]"
+        >
+          <Sliders className="w-3.5 h-3.5" /> 검수 기준
         </Link>
         <button onClick={refresh} className="p-2 text-gray-400 hover:text-white" aria-label="새로고침">
           <RefreshCw className="w-4 h-4" />

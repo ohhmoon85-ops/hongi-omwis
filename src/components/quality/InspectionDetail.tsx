@@ -7,7 +7,8 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { getDevInspection } from '@/lib/dev-inspections';
-import { fetchInspection } from '@/lib/inspections';
+import { fetchInspection, fetchInspectionReturns } from '@/lib/inspections';
+import { getInspectionPhotoUrls } from '@/lib/storage';
 import { isDevMode } from '@/lib/dev-data';
 import { formatDate, formatNumber } from '@/lib/utils';
 import { thicknessStats } from '@/lib/iqc-verdict';
@@ -15,19 +16,36 @@ import type { Inspection, ChecklistItem } from '@/types';
 import { VERDICT_BADGE } from '@/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { ChevronLeft, Printer, Check, X, Minus } from 'lucide-react';
+import { ChevronLeft, Printer, Check, X, Minus, Undo2 } from 'lucide-react';
 
 interface Props { id: string }
 
 export function InspectionDetail({ id }: Props) {
   const [insp, setInsp] = useState<Inspection | null>(null);
   const [loaded, setLoaded] = useState(false);
+  const [linkedReturns, setLinkedReturns] = useState<Array<{
+    id: string; order_number: string; reason: string;
+    restock: boolean; return_date: string; customer_name: string | null;
+  }>>([]);
+  const [photoUrls, setPhotoUrls] = useState<Array<{ path: string; url: string | null }>>([]);
 
   useEffect(() => {
     (async () => {
       try {
-        if (isDevMode) setInsp(getDevInspection(id));
-        else           setInsp(await fetchInspection(id));
+        if (isDevMode) {
+          setInsp(getDevInspection(id));
+        } else {
+          const [i, rets] = await Promise.all([
+            fetchInspection(id),
+            fetchInspectionReturns(id).catch(() => []),
+          ]);
+          setInsp(i);
+          setLinkedReturns(rets);
+          if (i && i.photo_urls.length > 0) {
+            const urls = await getInspectionPhotoUrls(i.photo_urls);
+            setPhotoUrls(urls);
+          }
+        }
       } finally { setLoaded(true); }
     })();
   }, [id]);
@@ -123,6 +141,34 @@ export function InspectionDetail({ id }: Props) {
             <ChecklistView items={insp.look_checks} />
           </div>
 
+          {/* 사진 갤러리 */}
+          {photoUrls.length > 0 && (
+            <div className="pt-3 border-t border-[#1f2433]">
+              <div className="text-xs text-gray-400 font-semibold mb-2">📸 검수 사진 ({photoUrls.length})</div>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                {photoUrls.map((p) => (
+                  <a
+                    key={p.path}
+                    href={p.url ?? '#'}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="block aspect-square rounded-md overflow-hidden bg-[#0f1117] border border-[#2a2f3e] hover:border-[#c8962e]/40 transition"
+                    title="새 탭에서 원본 보기"
+                  >
+                    {p.url ? (
+                      /* eslint-disable-next-line @next/next/no-img-element */
+                      <img src={p.url} alt="검수 사진" className="w-full h-full object-cover" />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-xs text-gray-500">
+                        (로드 실패)
+                      </div>
+                    )}
+                  </a>
+                ))}
+              </div>
+            </div>
+          )}
+
           {insp.memo && (
             <div className="pt-3 border-t border-[#1f2433]">
               <div className="text-xs text-gray-400 font-semibold mb-1">특이사항</div>
@@ -133,6 +179,30 @@ export function InspectionDetail({ id }: Props) {
           {insp.inventory_id && (
             <div className="pt-3 border-t border-[#1f2433] text-sm text-green-300">
               ✅ 이 검수로 재고 lot 등록됨 (inventory_id: <span className="font-mono">{insp.inventory_id.slice(0, 8)}</span>)
+            </div>
+          )}
+
+          {linkedReturns.length > 0 && (
+            <div className="pt-3 border-t border-[#1f2433]">
+              <div className="text-xs text-orange-300 font-semibold mb-2 flex items-center gap-1">
+                <Undo2 className="w-3 h-3" />
+                이 로트로부터 발생한 반품 {linkedReturns.length}건
+              </div>
+              <ul className="space-y-1.5">
+                {linkedReturns.map((r) => (
+                  <li key={r.id} className="text-sm bg-orange-500/10 border border-orange-500/30 rounded p-2">
+                    <div className="flex items-center justify-between gap-2 flex-wrap">
+                      <span className="font-mono text-xs text-orange-200">{r.order_number}</span>
+                      <span className="text-[11px] text-gray-400">
+                        {formatDate(r.return_date)}
+                        {r.customer_name && ` · ${r.customer_name}`}
+                        {r.restock ? ' · 재고 복원' : ' · 폐기'}
+                      </span>
+                    </div>
+                    <div className="text-[13px] text-gray-200 mt-0.5">{r.reason}</div>
+                  </li>
+                ))}
+              </ul>
             </div>
           )}
         </CardContent>
