@@ -75,6 +75,21 @@ export function InspectionDetail({ id }: Props) {
         </Button>
       </div>
 
+      {/* 인쇄 전용 정식 성적서 — 화면에선 숨김, 인쇄 시에만 노출 */}
+      <PrintCertificate insp={insp} photoUrls={photoUrls} />
+      <style jsx global>{`
+        @media print {
+          body { background: #fff !important; }
+          .no-print { display: none !important; }
+          .print-only { display: block !important; }
+          .screen-only { display: none !important; }
+          @page { size: A4; margin: 12mm; }
+        }
+        .print-only { display: none; }
+      `}</style>
+
+      <div className="screen-only space-y-4">
+
       <Card className="bg-gradient-to-b from-[#181c28] to-[#13161f] border-white/[0.06] text-white">
         <CardHeader>
           <div className="flex items-center gap-3">
@@ -207,6 +222,7 @@ export function InspectionDetail({ id }: Props) {
           )}
         </CardContent>
       </Card>
+      </div>
     </div>
   );
 }
@@ -234,3 +250,214 @@ function ChecklistView({ items }: { items: ChecklistItem[] }) {
     </ul>
   );
 }
+
+// ─── 인쇄 전용 정식 성적서 (A4 서식) ────────────────────────────────────────
+// @media print 로 화면에선 숨김, Ctrl+P 눌렀을 때만 렌더링.
+// 회사 헤더 + 테두리 표 형식 — 공급사 클레임·회장 결재 문서로 사용.
+function PrintCertificate({
+  insp,
+  photoUrls,
+}: {
+  insp: Inspection;
+  photoUrls: Array<{ path: string; url: string | null }>;
+}) {
+  const tri = (r: ChecklistItem['r']) =>
+    r === 'ok' ? '이상 없음' : r === 'ng' ? '불량' : '미확인';
+  const stats = insp.thickness_points ? thicknessStats(insp.thickness_points) : null;
+  const verdictLabel = insp.verdict === 'PASS' ? '합격 (PASS)' : '불합격 (FAIL)';
+  const verdictColor = insp.verdict === 'PASS' ? '#1b8a4c' : '#c0392b';
+
+  return (
+    <div className="print-only" style={{
+      background: '#fff', color: '#1c2333', fontFamily: "'Malgun Gothic','Apple SD Gothic Neo',sans-serif",
+      fontSize: '13px', lineHeight: 1.5,
+    }}>
+      <div style={{
+        borderBottom: '3px solid #c8962e', paddingBottom: '10px', marginBottom: '16px',
+      }}>
+        <h1 style={{ fontSize: '22px', color: '#12325e', fontWeight: 800, letterSpacing: '0.5px' }}>
+          (주)홍지 알루미늄 엔트리시트 입고 검수 성적서
+        </h1>
+        <div style={{ fontSize: '11px', color: '#6b7385', letterSpacing: '2px', marginTop: '4px' }}>
+          HONGJEE · PCB DRILL ENTRY SHEET · INCOMING QUALITY CERT
+        </div>
+      </div>
+
+      <table style={certTableStyle}>
+        <tbody>
+          <tr>
+            <th style={thStyle}>검수일</th><td style={tdStyle}>{formatDate(insp.inspected_at)}</td>
+            <th style={thStyle}>검수자</th><td style={tdStyle}>{insp.inspector ?? '-'}</td>
+          </tr>
+          <tr>
+            <th style={thStyle}>품목</th>
+            <td style={tdStyle} colSpan={3}>
+              {insp.product_name ?? insp.product_id}
+              <div style={{ fontSize: '11px', color: '#6b7385', marginTop: '2px' }}>
+                AL1050 H18 (완전경질) · 순도 99.5% 이상
+              </div>
+            </td>
+          </tr>
+          <tr>
+            <th style={thStyle}>로트번호</th><td style={tdStyle}>{insp.lot_number}</td>
+            <th style={thStyle}>공급사</th><td style={tdStyle}>{insp.supplier ?? '-'}</td>
+          </tr>
+          <tr>
+            <th style={thStyle}>코일 수</th><td style={tdStyle}>{insp.coil_count != null ? `${insp.coil_count} 개` : '-'}</td>
+            <th style={thStyle}>실측 중량</th><td style={tdStyle}>{insp.weight_measured != null ? `${insp.weight_measured} kg` : '-'}</td>
+          </tr>
+        </tbody>
+      </table>
+
+      {/* 두께 5점 */}
+      <table style={certTableStyle}>
+        <thead>
+          <tr>
+            <th style={{ ...thStyle, background: '#12325e', color: '#fff', textAlign: 'center' }} colSpan={7}>
+              두께 측정 (5점, 공차 ±{insp.thickness_tol}mm)
+            </th>
+          </tr>
+          <tr>
+            {['좌상', '좌중', '중앙', '우중', '우하', '평균', '판정'].map((h) => (
+              <th key={h} style={{ ...thStyle, textAlign: 'center', width: 'auto' }}>{h}</th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            {insp.thickness_points && insp.thickness_points.map((p, i) => (
+              <td key={i} style={{ ...tdStyle, textAlign: 'center', fontFamily: 'Consolas,monospace' }}>
+                {p != null ? p.toFixed(3) : '—'}
+              </td>
+            ))}
+            <td style={{ ...tdStyle, textAlign: 'center', fontFamily: 'Consolas,monospace', fontWeight: 'bold' }}>
+              {stats ? stats.avg.toFixed(3) : '—'}
+            </td>
+            <td style={{ ...tdStyle, textAlign: 'center', fontWeight: 'bold' }}>
+              {stats ? '측정됨' : '스킵'}
+            </td>
+          </tr>
+        </tbody>
+      </table>
+
+      {/* 폭 */}
+      {insp.width_measured != null && (
+        <table style={certTableStyle}>
+          <tbody>
+            <tr>
+              <th style={thStyle}>실측 폭</th>
+              <td style={tdStyle}>{insp.width_measured} mm (허용 +1 / -0)</td>
+            </tr>
+          </tbody>
+        </table>
+      )}
+
+      {/* Mill checks */}
+      <table style={certTableStyle}>
+        <thead>
+          <tr>
+            <th style={{ ...thStyle, background: '#12325e', color: '#fff', textAlign: 'center' }} colSpan={2}>
+              성적서(Mill) 대조
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          {insp.mill_checks.map((c, i) => (
+            <tr key={i}>
+              <td style={tdStyle}>{c.q}</td>
+              <td style={{ ...tdStyle, width: '90px', textAlign: 'center', fontWeight: 'bold',
+                color: c.r === 'ng' ? '#c0392b' : c.r === 'ok' ? '#1b8a4c' : '#6b7385',
+              }}>
+                {tri(c.r)}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+
+      {/* Look checks */}
+      <table style={certTableStyle}>
+        <thead>
+          <tr>
+            <th style={{ ...thStyle, background: '#12325e', color: '#fff', textAlign: 'center' }} colSpan={2}>
+              외관·코팅 검사
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          {insp.look_checks.map((c, i) => (
+            <tr key={i}>
+              <td style={tdStyle}>{c.q}</td>
+              <td style={{ ...tdStyle, width: '90px', textAlign: 'center', fontWeight: 'bold',
+                color: c.r === 'ng' ? '#c0392b' : c.r === 'ok' ? '#1b8a4c' : '#6b7385',
+              }}>
+                {tri(c.r)}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+
+      {insp.memo && (
+        <table style={certTableStyle}>
+          <tbody>
+            <tr>
+              <th style={thStyle}>비고</th>
+              <td style={tdStyle}>{insp.memo}</td>
+            </tr>
+          </tbody>
+        </table>
+      )}
+
+      {/* 판정 */}
+      <table style={certTableStyle}>
+        <tbody>
+          <tr>
+            <th style={thStyle}>종합 판정</th>
+            <td style={{ ...tdStyle, fontSize: '16px', fontWeight: 800, color: verdictColor }}>
+              {verdictLabel}
+            </td>
+          </tr>
+        </tbody>
+      </table>
+
+      {/* 사진 (있으면 4장까지) */}
+      {photoUrls.length > 0 && (
+        <div style={{ marginTop: '10px' }}>
+          <div style={{ fontSize: '11px', color: '#6b7385', marginBottom: '6px' }}>
+            📸 검수 사진 ({photoUrls.length}장)
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '6px' }}>
+            {photoUrls.slice(0, 8).map((p) => (
+              p.url && (
+                /* eslint-disable-next-line @next/next/no-img-element */
+                <img key={p.path} src={p.url} alt="검수 사진"
+                  style={{ width: '100%', aspectRatio: '1/1', objectFit: 'cover',
+                    border: '1px solid #999', borderRadius: '4px' }}
+                />
+              )
+            ))}
+          </div>
+        </div>
+      )}
+
+      <p style={{ marginTop: '20px', fontSize: '11px', color: '#6b7385' }}>
+        본 성적서는 OMWIS 검수 시스템에서 자동 생성되었습니다. · {new Date().toLocaleString('ko-KR')}
+        <span style={{ float: 'right', fontFamily: 'Consolas,monospace' }}>
+          검수 ID: {insp.id.slice(0, 8)}
+        </span>
+      </p>
+    </div>
+  );
+}
+
+const certTableStyle: React.CSSProperties = {
+  width: '100%', borderCollapse: 'collapse', marginBottom: '10px',
+};
+const thStyle: React.CSSProperties = {
+  background: '#eef1f6', border: '1px solid #999', padding: '6px 9px',
+  textAlign: 'left', width: '25%', fontSize: '12px', fontWeight: 600,
+};
+const tdStyle: React.CSSProperties = {
+  border: '1px solid #999', padding: '6px 9px', fontSize: '12.5px',
+};

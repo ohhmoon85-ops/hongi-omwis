@@ -14,7 +14,8 @@ import type { Inspection } from '@/types';
 import { VERDICT_BADGE } from '@/types';
 import { Card, CardContent } from '@/components/ui/card';
 import toast, { Toaster } from 'react-hot-toast';
-import { RefreshCw, Search, BarChart3, Sliders } from 'lucide-react';
+import { RefreshCw, Search, BarChart3, Sliders, Download } from 'lucide-react';
+import { downloadCSV } from '@/lib/iqc-csv';
 
 export function QualityList() {
   const [items, setItems] = useState<Inspection[]>([]);
@@ -101,6 +102,17 @@ export function QualityList() {
         >
           <Sliders className="w-3.5 h-3.5" /> 검수 기준
         </Link>
+        <button
+          onClick={() => {
+            if (items.length === 0) { toast.error('내보낼 이력이 없습니다'); return; }
+            downloadCSV(filtered.length > 0 ? filtered : items);
+            toast.success(`${filtered.length > 0 ? filtered.length : items.length}건 CSV 저장`);
+          }}
+          className="inline-flex items-center gap-1 px-3 py-1.5 text-xs rounded-lg bg-[#171b26] text-gray-300 border border-[#2a2f3e] hover:border-green-500/40"
+          title="현재 필터 결과를 CSV 로 내보내기"
+        >
+          <Download className="w-3.5 h-3.5" /> CSV 내보내기
+        </button>
         <button onClick={refresh} className="p-2 text-gray-400 hover:text-white" aria-label="새로고침">
           <RefreshCw className="w-4 h-4" />
         </button>

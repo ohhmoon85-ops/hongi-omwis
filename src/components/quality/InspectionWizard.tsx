@@ -525,25 +525,48 @@ export function InspectionWizard() {
             </CardContent>
           </Card>
 
-          {/* 실시간 판정 + 저장 */}
+          {/* 실시간 판정 요약 (사유 리스트) */}
           <VerdictSummary verdict={verdictResult.verdict} reasons={verdictResult.reasons} />
-          <div className="flex gap-2">
+
+          {/* 페이지 하단 여백 — sticky 바에 가려지지 않도록 */}
+          <div className="h-24" />
+        </>
+      )}
+
+      {/* ── 하단 sticky 판정 + 저장 바 (검수 스텝 진입 시에만) ── */}
+      {step === 'inspect' && preset && verdictResult && (
+        <div className="fixed bottom-0 left-0 right-0 z-40 bg-[#0b0d13]/95 backdrop-blur-xl border-t border-white/[0.06] shadow-[0_-6px_20px_rgba(0,0,0,0.5)]">
+          <div className="max-w-4xl mx-auto px-4 py-3 flex items-center gap-3">
+            <div className="flex-1 min-w-0">
+              <div className="text-[10px] text-gray-500 uppercase tracking-wider">종합 판정</div>
+              <div className={`text-xl font-extrabold tracking-tight ${
+                verdictResult.verdict === 'PASS' ? 'text-green-400'
+                : verdictResult.verdict === 'FAIL' ? 'text-red-400'
+                : 'text-amber-400'
+              }`}>
+                {verdictResult.verdict === 'PASS' && '✓ 합격 (PASS)'}
+                {verdictResult.verdict === 'FAIL' && '✕ 불합격 (FAIL)'}
+                {verdictResult.verdict === 'PENDING' && '⏸ 검수 진행 중'}
+              </div>
+            </div>
             <Button
               onClick={saveInspection}
               disabled={saving || verdictResult.verdict === 'PENDING'}
-              className={`flex-1 h-12 text-base ${
+              className={`h-12 px-6 text-sm font-semibold flex-shrink-0 ${
                 verdictResult.verdict === 'PASS'
                   ? 'bg-green-600 hover:bg-green-700'
                   : verdictResult.verdict === 'FAIL'
                     ? 'bg-red-600 hover:bg-red-700'
-                    : 'bg-gray-600'
+                    : 'bg-gray-600 cursor-not-allowed'
               } text-white`}
             >
               <ClipboardCheck className="w-4 h-4 mr-1" />
-              {saving ? '저장 중...' : `${VERDICT_BADGE[verdictResult.verdict].label} 로 저장`}
+              {saving ? '저장 중...' : verdictResult.verdict === 'PENDING'
+                ? '항목 완료 필요'
+                : `${VERDICT_BADGE[verdictResult.verdict].label}로 저장`}
             </Button>
           </div>
-        </>
+        </div>
       )}
 
       {step === 'registered' && savedInspection && preset && (
