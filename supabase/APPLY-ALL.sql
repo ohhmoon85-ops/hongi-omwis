@@ -753,6 +753,73 @@ CREATE POLICY "storage_delete_delivery_photos"
 
 
 -- ╔══════════════════════════════════════════════════════════════════════════╗
+-- ║ PART 5 — 입고 품질검수 IQC (007) [신규/기존 DB 모두 안전]                 ║
+-- ║ inspections + inspection_specs 테이블 + RLS + returns.inspection_id       ║
+-- ╚══════════════════════════════════════════════════════════════════════════╝
+
+CREATE TABLE IF NOT EXISTS inspections (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  inventory_id UUID REFERENCES inventory(id) ON DELETE SET NULL,
+  product_id UUID NOT NULL REFERENCES products(id),
+  lot_number VARCHAR(50) NOT NULL,
+  supplier VARCHAR(100),
+  coil_count INTEGER,
+  inspector VARCHAR(50),
+  inspected_at DATE DEFAULT CURRENT_DATE,
+  thickness_points DECIMAL(6,3)[],
+  thickness_tol DECIMAL(6,3) DEFAULT 0.005,
+  width_measured DECIMAL(7,2),
+  weight_measured DECIMAL(10,2),
+  mill_checks JSONB,
+  look_checks JSONB,
+  photo_urls TEXT[],
+  memo TEXT,
+  verdict VARCHAR(10) NOT NULL CHECK (verdict IN ('PASS','FAIL')),
+  created_by UUID REFERENCES auth.users(id),
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_inspections_product_id ON inspections(product_id);
+CREATE INDEX IF NOT EXISTS idx_inspections_lot_number ON inspections(lot_number);
+CREATE INDEX IF NOT EXISTS idx_inspections_supplier ON inspections(supplier);
+CREATE INDEX IF NOT EXISTS idx_inspections_inspected_at ON inspections(inspected_at DESC);
+CREATE INDEX IF NOT EXISTS idx_inspections_verdict ON inspections(verdict);
+
+CREATE TABLE IF NOT EXISTS inspection_specs (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  product_id UUID REFERENCES products(id) UNIQUE,
+  thickness_tol DECIMAL(6,3) DEFAULT 0.005,
+  width_plus DECIMAL(5,2) DEFAULT 1.0,
+  width_minus DECIMAL(5,2) DEFAULT 0.0,
+  weight_tol_pct DECIMAL(4,2) DEFAULT 0.5,
+  updated_at TIMESTAMPTZ DEFAULT now()
+);
+
+ALTER TABLE returns ADD COLUMN IF NOT EXISTS inspection_id UUID
+  REFERENCES inspections(id) ON DELETE SET NULL;
+CREATE INDEX IF NOT EXISTS idx_returns_inspection_id ON returns(inspection_id);
+
+ALTER TABLE inspections      ENABLE ROW LEVEL SECURITY;
+ALTER TABLE inspection_specs ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "admin_all_inspections" ON inspections;
+CREATE POLICY "admin_all_inspections" ON inspections FOR ALL
+  USING (current_role_v() IN ('super_admin','admin'));
+
+DROP POLICY IF EXISTS "chair_read_inspections" ON inspections;
+CREATE POLICY "chair_read_inspections" ON inspections FOR SELECT
+  USING (current_role_v() = 'chairman');
+
+DROP POLICY IF EXISTS "admin_all_inspection_specs" ON inspection_specs;
+CREATE POLICY "admin_all_inspection_specs" ON inspection_specs FOR ALL
+  USING (current_role_v() IN ('super_admin','admin'));
+
+DROP POLICY IF EXISTS "chair_read_inspection_specs" ON inspection_specs;
+CREATE POLICY "chair_read_inspection_specs" ON inspection_specs FOR SELECT
+  USING (current_role_v() = 'chairman');
+
+
+-- ╔══════════════════════════════════════════════════════════════════════════╗
 -- ║ 검증 — 아래 결과를 확인하세요                                              ║
 -- ╚══════════════════════════════════════════════════════════════════════════╝
 SELECT 'orders_status_check' AS check, pg_get_constraintdef(oid) AS def
@@ -761,4 +828,5 @@ SELECT count(*) AS driver_remaining FROM user_profiles WHERE role = 'driver';   
 SELECT tablename AS realtime_tables FROM pg_publication_tables WHERE pubname = 'supabase_realtime' ORDER BY 1;
 SELECT count(*) AS returns_table_ok FROM returns;
 SELECT count(*) AS customer_prices_ok FROM customer_prices;
+SELECT count(*) AS inspections_table_ok FROM inspections;
 SELECT id AS storage_buckets FROM storage.buckets ORDER BY 1;

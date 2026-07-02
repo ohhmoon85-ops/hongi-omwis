@@ -134,8 +134,75 @@ export interface ReturnRecord {
   restock: boolean;          // true = 정상품, 재고 복원 / false = 폐기
   return_date: string;
   memo: string | null;
+  inspection_id: string | null;  // 원 검수 역추적 (007 마이그레이션)
   created_at: string;
 }
+
+// ============================================================================
+// IQC (입고 품질검수) — 2026-07-02 Phase 3 착수
+// ============================================================================
+
+export type Verdict = 'PASS' | 'FAIL' | 'PENDING';
+
+// 체크리스트 응답: ok=이상 없음 / ng=불량 / null=미확인(정보 부족)
+export type CheckResult = 'ok' | 'ng' | null;
+
+export interface ChecklistItem {
+  q: string;              // 질문 라벨
+  hint?: string;          // 도움말 (성적서 어디 보라 등)
+  r: CheckResult;         // 저장된 응답
+}
+
+export interface Inspection {
+  id: string;
+  inventory_id: string | null;   // PASS 시 만들어진 재고 lot 참조
+  product_id: string;
+  product_name?: string;         // 조인 표시용 (DB 원 컬럼 아님)
+  lot_number: string;
+  supplier: string | null;
+  coil_count: number | null;
+  inspector: string | null;
+  inspected_at: string;
+
+  thickness_points: (number | null)[] | null;   // 5점 (각 점 null 허용)
+  thickness_tol: number;               // ±mm
+  width_measured: number | null;
+  weight_measured: number | null;
+
+  mill_checks: ChecklistItem[];
+  look_checks: ChecklistItem[];
+
+  photo_urls: string[];
+  memo: string | null;
+  verdict: 'PASS' | 'FAIL';            // DB CHECK 상 PENDING 저장 불가
+  created_at: string;
+}
+
+// 품목별 검수 기준
+export interface InspectionSpec {
+  product_id: string;
+  thickness_tol: number;
+  width_plus: number;
+  width_minus: number;
+  weight_tol_pct: number;
+  updated_at: string;
+}
+
+// SKU 프리셋 — 12종 카탈로그 (검수 화면 SkuSelector 에서 사용)
+export interface IqcSkuPreset {
+  code: string;               // 임의 코드 (raw-010-540 등)
+  type: ProductType;
+  thickness: number;          // 기준 두께 mm
+  width: number;              // 기준 폭 mm
+  purity: string;
+  displayName: string;        // 화면 표시용
+}
+
+export const VERDICT_BADGE: Record<'PASS' | 'FAIL' | 'PENDING', { label: string; color: string }> = {
+  PASS:    { label: '합격',   color: 'bg-green-500/20 text-green-300 border-green-500/30' },
+  FAIL:    { label: '불합격', color: 'bg-red-500/20 text-red-300 border-red-500/30' },
+  PENDING: { label: '미완',   color: 'bg-amber-500/20 text-amber-300 border-amber-500/30' },
+};
 
 // ----------------------------------------------------------------------------
 // 화면 표시용 상수
