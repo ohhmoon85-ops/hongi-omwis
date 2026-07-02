@@ -26,6 +26,7 @@ interface ReturnBody {
   reason?: string;
   restock?: boolean;
   memo?: string;
+  inspection_id?: string;  // 원 검수 역추적 링크 (선택)
 }
 
 export async function POST(req: NextRequest) {
@@ -44,7 +45,7 @@ export async function POST(req: NextRequest) {
   }
 
   const body = (await req.json()) as ReturnBody;
-  const { order_id, reason, restock = false, memo } = body;
+  const { order_id, reason, restock = false, memo, inspection_id } = body;
   if (!order_id || !reason?.trim()) {
     return apiError('validation', 'order_id 와 reason 은 필수입니다');
   }
@@ -68,6 +69,7 @@ export async function POST(req: NextRequest) {
     reason: reason.trim(),
     restock,
     memo: memo ?? null,
+    inspection_id: inspection_id ?? null,
     created_by: user.id,
   });
   if (rErr) return apiError('internal', '반품 이력 저장 실패', rErr.message);

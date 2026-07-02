@@ -151,7 +151,12 @@ export async function reorder(order: DevOrder): Promise<string> {
 // 서버 API(/api/returns) 경유 — RLS · 재고 복원 트랜잭션을 서버에서 보장
 export async function returnOrder(
   orderId: string,
-  data: { reason: string; restock: boolean; memo?: string },
+  data: {
+    reason: string;
+    restock: boolean;
+    memo?: string;
+    inspection_id?: string;   // 원 검수 역추적 (선택)
+  },
 ): Promise<void> {
   const res = await fetch('/api/returns', {
     method: 'POST',
@@ -162,4 +167,41 @@ export async function returnOrder(
     const { readApiError } = await import('@/lib/api-error');
     throw new Error(await readApiError(res));
   }
+}
+
+// 주문 안의 품목들과 관련된 최근 검수 이력 조회 — 반품 처리 시 원 로트 역추적
+export async function fetchRelatedInspections(orderId: string): Promise<Array<{
+  id: string;
+  lot_number: string;
+  product_name: string;
+  supplier: string | null;
+  inspected_at: string;
+  verdict: string;
+}>> {
+  const supabase = createClient();
+
+  // 주문 품목 → product_id 목록
+  const { data: items } = await supabase
+    .from('order_items').select('product_id').eq('order_id', orderId);
+  const productIds = [...new Set((items ?? []).map((it) => it.product_id).filter(Boolean))];
+  if (productIds.length === 0) return [];
+
+  // 그 품목들의 PASS 검수 (최근 30건)
+  const { data: insp } = await supabase
+    .from('inspections')
+    .select('id, lot_number, supplier, inspected_at, verdict, products(name)')
+    .in('product_id', productIds)
+    .eq('verdict', 'PASS')
+    .order('inspected_at', { ascending: false })
+    .limit(30);
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return (insp ?? []).map((i: any) => ({
+    id: i.id,
+    lot_number: i.lot_number,
+    product_name: i.products?.name ?? '-',
+    supplier: i.supplier,
+    inspected_at: i.inspected_at,
+    verdict: i.verdict,
+  }));
 }

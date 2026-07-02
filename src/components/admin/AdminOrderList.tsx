@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { loadDevOrders, updateDevOrderStatus, type DevOrder } from '@/lib/dev-orders';
 import {
   fetchOrders, updateOrderStatus, dispatchOrderManually,
-  fetchDispatchedOrderIds, returnOrder,
+  fetchDispatchedOrderIds, returnOrder, fetchRelatedInspections,
 } from '@/lib/orders';
 import { fetchInvoiceMap, issueInvoice, type InvoiceInfo } from '@/lib/invoices';
 import { createClient } from '@/lib/supabase/client';
@@ -18,7 +18,7 @@ import { Input } from '@/components/ui/input';
 import toast, { Toaster } from 'react-hot-toast';
 import {
   Check, X, Calendar, RefreshCw, Truck, FileText,
-  PackageMinus, PackageCheck, Undo2,
+  PackageMinus, PackageCheck, Undo2, ClipboardCheck,
 } from 'lucide-react';
 
 const STATUS_FILTERS: Array<{ key: OrderStatus | 'all'; label: string }> = [
@@ -150,15 +150,22 @@ export function AdminOrderList() {
     }
   }
 
-  async function handleReturn(o: DevOrder, reason: string, restock: boolean) {
+  async function handleReturn(
+    o: DevOrder, reason: string, restock: boolean, inspectionId: string | null,
+  ) {
     if (isDevMode) {
       toast.error('개발 모드에서는 반품 미지원 (Supabase 연결 필요)');
       return;
     }
     try {
-      await returnOrder(o.id, { reason, restock });
+      await returnOrder(o.id, {
+        reason, restock,
+        inspection_id: inspectionId ?? undefined,
+      });
       toast.success(
-        `${o.order_number} 반품 처리 완료${restock ? ' (재고 복원)' : ' (폐기)'}`,
+        `${o.order_number} 반품 처리 완료${restock ? ' (재고 복원)' : ' (폐기)'}${
+          inspectionId ? ' · 원 검수 링크됨' : ''
+        }`,
       );
       setExpandedId(null);
       await refresh();
@@ -227,7 +234,7 @@ export function AdminOrderList() {
               onAdvance={(s) => advance(o, s)}
               onIssue={() => issue(o)}
               onManualDispatch={() => manualDispatch(o)}
-              onReturn={(r, restock) => handleReturn(o, r, restock)}
+              onReturn={(r, restock, inspId) => handleReturn(o, r, restock, inspId)}
             />
           ))}
         </div>
@@ -257,7 +264,7 @@ function OrderRow({
   onAdvance: (s: OrderStatus) => void;
   onIssue: () => void;
   onManualDispatch: () => void;
-  onReturn: (reason: string, restock: boolean) => void;
+  onReturn: (reason: string, restock: boolean, inspectionId: string | null) => void;
 }) {
   const badge = ORDER_STATUS_BADGE[o.status];
   const [confirmedDate, setConfirmedDate] = useState(o.requested_date || todayISO());
@@ -265,6 +272,11 @@ function OrderRow({
   // 반품 폼 상태
   const [returnReason, setReturnReason] = useState('');
   const [restock, setRestock] = useState(true);
+  const [linkedInspection, setLinkedInspection] = useState<string>('');   // '' = 미링크
+  const [inspections, setInspections] = useState<Array<{
+    id: string; lot_number: string; product_name: string;
+    supplier: string | null; inspected_at: string;
+  }>>([]);
 
   const hasInvoice = !!invoice && (invoice.status === 'issued' || invoice.status === 'sent');
   // 발행 버튼 노출: 승인 ~ 처리중 (출고 전)
@@ -285,6 +297,15 @@ function OrderRow({
   const shipBlocked = (s: OrderStatus) => s === 'shipped' && !isDevMode && !hasInvoice;
   // 반품 가능: 출고 완료 상태에서만
   const canReturn = !isDevMode && o.status === 'shipped';
+
+  // 카드 확장 + 반품 가능 시 관련 검수 조회 (한 번만)
+  useEffect(() => {
+    if (!expanded || !canReturn || inspections.length > 0) return;
+    fetchRelatedInspections(o.id)
+      .then(setInspections)
+      .catch(() => {/* 조용히 실패 — 반품은 검수 링크 없이도 가능 */});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [expanded, canReturn, o.id]);
 
   return (
     <Card className="bg-gradient-to-b from-[#181c28] to-[#13161f] border-white/[0.06] text-white">
@@ -496,6 +517,47 @@ function OrderRow({
                   placeholder="반품 사유 (예: 표면 불량, 포장 파손, 수량 부족 등)"
                   className="bg-[#0f1117] border-[#2a2f3e] text-white"
                 />
+
+                {/* 원 입고 검수 링크 (선택) — 클레임 사유 역추적용 */}
+                {inspections.length > 0 && (
+                  <div>
+                    <label className="text-[11px] text-gray-400 flex items-center gap-1 mb-1">
+                      <ClipboardCheck className="w-3 h-3" />
+                      관련 입고 검수 로트 (선택)
+                    </label>
+                    <div className="flex gap-1.5">
+                      <select
+                        value={linkedInspection}
+                        onChange={(e) => setLinkedInspection(e.target.value)}
+                        className="flex-1 h-9 px-2 rounded-md border border-[#2a2f3e] bg-[#0f1117] text-white text-xs"
+                      >
+                        <option value="">링크 없음 — 검수 미확정</option>
+                        {inspections.map((i) => (
+                          <option key={i.id} value={i.id}>
+                            {i.lot_number} · {i.product_name}
+                            {i.supplier ? ` · ${i.supplier}` : ''}
+                            {` · ${formatDate(i.inspected_at)}`}
+                          </option>
+                        ))}
+                      </select>
+                      {linkedInspection && (
+                        <Link
+                          href={`/admin/quality/${linkedInspection}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1 px-2 h-9 rounded-md border border-[#c8962e]/40 text-[11px] text-[#e0bf70] hover:bg-[#c8962e]/10 whitespace-nowrap"
+                          title="새 탭에서 원 검수 성적서 보기"
+                        >
+                          성적서
+                        </Link>
+                      )}
+                    </div>
+                    <div className="text-[10px] text-gray-500 mt-0.5">
+                      클레임 로트를 링크하면, 나중에 원 검수의 성적서·사진을 즉시 조회할 수 있습니다.
+                    </div>
+                  </div>
+                )}
+
                 <label className="flex items-center gap-2 text-xs text-gray-300">
                   <input
                     type="checkbox"
@@ -506,7 +568,9 @@ function OrderRow({
                   정상품 — 재고 복원 (체크 해제 시 폐기 처리)
                 </label>
                 <Button
-                  onClick={() => returnReason.trim() && onReturn(returnReason.trim(), restock)}
+                  onClick={() => returnReason.trim() && onReturn(
+                    returnReason.trim(), restock, linkedInspection || null,
+                  )}
                   disabled={!returnReason.trim()}
                   className="bg-orange-600 hover:bg-orange-700 text-white"
                 >

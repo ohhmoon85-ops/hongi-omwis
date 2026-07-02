@@ -53,3 +53,30 @@ export async function fetchInspection(id: string): Promise<Inspection | null> {
   if (error) throw new Error(error.message);
   return data ? mapRow(data) : null;
 }
+
+// 이 검수로부터 파생된 반품 이력 (여러 건 가능)
+export async function fetchInspectionReturns(inspectionId: string): Promise<Array<{
+  id: string;
+  order_number: string;
+  reason: string;
+  restock: boolean;
+  return_date: string;
+  customer_name: string | null;
+}>> {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from('returns')
+    .select('id, reason, restock, return_date, orders(order_number, customers(company_name))')
+    .eq('inspection_id', inspectionId)
+    .order('return_date', { ascending: false });
+  if (error) throw new Error(error.message);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return (data ?? []).map((r: any) => ({
+    id: r.id,
+    order_number: r.orders?.order_number ?? '-',
+    reason: r.reason,
+    restock: r.restock,
+    return_date: r.return_date,
+    customer_name: r.orders?.customers?.company_name ?? null,
+  }));
+}
