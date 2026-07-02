@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { InventoryManager } from '@/components/admin/InventoryManager';
-import { ClipboardCheck } from 'lucide-react';
+import { ClipboardCheck, PackagePlus } from 'lucide-react';
 
 export default function InventoryPage() {
   return (
@@ -13,13 +13,22 @@ export default function InventoryPage() {
             입고 등록 · Lot 관리 · 재고 조정 · 안전재고 설정 (미달 시 대시보드 경보)
           </p>
         </div>
-        <Link
-          href="/admin/inventory/stocktake"
-          className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-[#1a3d6b] hover:bg-[#235490] text-white text-sm transition"
-        >
-          <ClipboardCheck className="w-4 h-4" />
-          재고 실사
-        </Link>
+        <div className="flex items-center gap-2 flex-wrap">
+          <Link
+            href="/admin/inventory/stock-in"
+            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-green-600 hover:bg-green-700 text-white text-sm transition"
+          >
+            <PackagePlus className="w-4 h-4" />
+            IQC 검수 → 입고
+          </Link>
+          <Link
+            href="/admin/inventory/stocktake"
+            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-[#1a3d6b] hover:bg-[#235490] text-white text-sm transition"
+          >
+            <ClipboardCheck className="w-4 h-4" />
+            재고 실사
+          </Link>
+        </div>
       </header>
 
       <InventoryManager />

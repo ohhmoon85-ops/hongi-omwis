@@ -198,8 +198,43 @@ CREATE TABLE IF NOT EXISTS returns (
   restock BOOLEAN DEFAULT false,            -- true = 정상품 재고 복원 / false = 폐기
   return_date DATE DEFAULT CURRENT_DATE,
   memo TEXT,
+  inspection_id UUID,                       -- 원 검수 역추적 (2026-07-02 IQC 추가)
   created_by UUID REFERENCES auth.users(id),
   created_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- ⑭ 입고 품질검수 (IQC) — 2026-07-02 Phase 3
+CREATE TABLE IF NOT EXISTS inspections (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  inventory_id UUID REFERENCES inventory(id) ON DELETE SET NULL,
+  product_id UUID NOT NULL REFERENCES products(id),
+  lot_number VARCHAR(50) NOT NULL,
+  supplier VARCHAR(100),
+  coil_count INTEGER,
+  inspector VARCHAR(50),
+  inspected_at DATE DEFAULT CURRENT_DATE,
+  thickness_points DECIMAL(6,3)[],
+  thickness_tol DECIMAL(6,3) DEFAULT 0.005,
+  width_measured DECIMAL(7,2),
+  weight_measured DECIMAL(10,2),
+  mill_checks JSONB,
+  look_checks JSONB,
+  photo_urls TEXT[],
+  memo TEXT,
+  verdict VARCHAR(10) NOT NULL CHECK (verdict IN ('PASS','FAIL')),
+  created_by UUID REFERENCES auth.users(id),
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- ⑮ 품목별 검수 기준
+CREATE TABLE IF NOT EXISTS inspection_specs (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  product_id UUID REFERENCES products(id) UNIQUE,
+  thickness_tol DECIMAL(6,3) DEFAULT 0.005,
+  width_plus DECIMAL(5,2) DEFAULT 1.0,
+  width_minus DECIMAL(5,2) DEFAULT 0.0,
+  weight_tol_pct DECIMAL(4,2) DEFAULT 0.5,
+  updated_at TIMESTAMPTZ DEFAULT now()
 );
 
 -- ============================================================================

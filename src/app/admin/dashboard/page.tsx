@@ -15,6 +15,8 @@ interface DashboardKPIs {
   monthRevenue: number | null;
   stockAlerts: number | null;
   receivables: number | null;
+  iqcPassRate: number | null;       // 이번 달 검수 합격률 (0~100)
+  iqcTotal: number | null;          // 이번 달 검수 총 건수
 }
 
 // KST 기준 '이번 달 1일'·'오늘 0시'의 UTC 순간을 ISO 로 반환
@@ -34,6 +36,7 @@ async function getKPIs(): Promise<DashboardKPIs> {
   const empty: DashboardKPIs = {
     todayOrders: null, ordersInProgress: null, shippedThisMonth: null,
     monthRevenue: null, stockAlerts: null, receivables: null,
+    iqcPassRate: null, iqcTotal: null,
   };
   if (isDevMode) return empty;
 
@@ -41,8 +44,8 @@ async function getKPIs(): Promise<DashboardKPIs> {
     const supabase = createClient();
     const { monthStart, todayStart } = kstBoundaries();
 
-    // 이번 달 주문(전체) + 진행 중 + 출고 완료 + 미수금 + 재고 경보
-    const [ordersMonthRes, ordersOpenRes, customersRes, inventoryRes, safetyRes] =
+    // 이번 달 주문(전체) + 진행 중 + 출고 완료 + 미수금 + 재고 경보 + IQC
+    const [ordersMonthRes, ordersOpenRes, customersRes, inventoryRes, safetyRes, iqcRes] =
       await Promise.all([
         supabase.from('orders')
           .select('total_amount, status, created_at')
@@ -54,6 +57,10 @@ async function getKPIs(): Promise<DashboardKPIs> {
         supabase.from('customers').select('current_balance'),
         supabase.from('inventory').select('product_id, quantity').eq('status', 'active'),
         supabase.from('safety_stock').select('product_id, min_quantity'),
+        // 이번 달 검수 (IQC) — verdict 별 카운트
+        supabase.from('inspections')
+          .select('verdict')
+          .gte('inspected_at', monthStart.slice(0, 10)),
       ]);
 
     const ordersMonth = ordersMonthRes.data ?? [];
@@ -78,9 +85,16 @@ async function getKPIs(): Promise<DashboardKPIs> {
       (s) => (stockByProduct.get(s.product_id) ?? 0) < Number(s.min_quantity ?? 0),
     ).length;
 
+    // IQC 이번 달 합격률
+    const iqc = (iqcRes.data ?? []) as Array<{ verdict: string }>;
+    const iqcTotal = iqc.length;
+    const iqcPass = iqc.filter((i) => i.verdict === 'PASS').length;
+    const iqcPassRate = iqcTotal > 0 ? Math.round((iqcPass / iqcTotal) * 100) : null;
+
     return {
       todayOrders, ordersInProgress, shippedThisMonth,
       monthRevenue, stockAlerts, receivables,
+      iqcPassRate, iqcTotal,
     };
   } catch (err) {
     console.error('[dashboard] KPI fetch failed:', err);
@@ -131,6 +145,14 @@ export default async function AdminDashboardPage() {
     {
       icon: '💰', title: '미수금 현황', color: 'text-orange-400', desc: '거래처 잔액 총계',
       value: kpi.receivables == null ? '-' : formatKRW(kpi.receivables),
+    },
+    {
+      icon: '🔬', title: '이번 달 검수 합격률',
+      color: kpi.iqcPassRate != null && kpi.iqcPassRate >= 90 ? 'text-green-400'
+           : kpi.iqcPassRate != null && kpi.iqcPassRate >= 70 ? 'text-amber-400'
+           : 'text-red-400',
+      desc: kpi.iqcTotal == null ? 'IQC' : `총 ${kpi.iqcTotal}건`,
+      value: kpi.iqcPassRate == null ? '-' : `${kpi.iqcPassRate}%`,
     },
   ];
 
