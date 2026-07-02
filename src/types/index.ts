@@ -153,9 +153,19 @@ export interface ChecklistItem {
   r: CheckResult;         // 저장된 응답
 }
 
+export type InspectionPurpose = 'incoming' | 'vendor_sample';
+
+// 평가 시점 상용 조건 스냅샷 (업체가 나중에 조건 바꿔도 원 값 보존)
+export interface CommercialSnapshot {
+  price_note?: string;      // "USD 2,450/t"
+  moq?: string;             // "5t"
+  lead_time?: string;       // "30일"
+  payment_terms?: string;   // "T/T 30/70"
+}
+
 export interface Inspection {
   id: string;
-  inventory_id: string | null;   // PASS 시 만들어진 재고 lot 참조
+  inventory_id: string | null;   // PASS 시 만들어진 재고 lot 참조 (incoming 만)
   product_id: string;
   product_name?: string;         // 조인 표시용 (DB 원 컬럼 아님)
   lot_number: string;
@@ -175,8 +185,45 @@ export interface Inspection {
   photo_urls: string[];
   memo: string | null;
   verdict: 'PASS' | 'FAIL';            // DB CHECK 상 PENDING 저장 불가
+
+  // 2026-07-04 vendor evaluation 확장 (008)
+  purpose: InspectionPurpose;                          // incoming | vendor_sample
+  candidate_vendor_id: string | null;                  // vendor_sample 인 경우 참조
+  candidate_vendor_name?: string;                      // 조인 표시용
+  commercial_snapshot: CommercialSnapshot | null;      // 평가 시점 조건
+
   created_at: string;
 }
+
+// 후보 업체 상태
+export type VendorStatus = 'evaluating' | 'approved' | 'rejected' | 'on_hold';
+
+export interface CandidateVendor {
+  id: string;
+  name: string;
+  location: string | null;
+  contact_name: string | null;
+  wechat: string | null;
+  phone: string | null;
+  email: string | null;
+  price_note: string | null;
+  moq: string | null;
+  lead_time: string | null;
+  payment_terms: string | null;
+  factory_note: string | null;
+  status: VendorStatus;
+  approved_at: string | null;
+  memo: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export const VENDOR_STATUS_BADGE: Record<VendorStatus, { label: string; color: string }> = {
+  evaluating: { label: '평가 중',   color: 'bg-blue-500/20 text-blue-300 border-blue-500/30' },
+  approved:   { label: '승격 완료', color: 'bg-green-500/20 text-green-300 border-green-500/30' },
+  rejected:   { label: '탈락',      color: 'bg-red-500/20 text-red-300 border-red-500/30' },
+  on_hold:    { label: '보류',      color: 'bg-amber-500/20 text-amber-300 border-amber-500/30' },
+};
 
 // 품목별 검수 기준
 export interface InspectionSpec {
