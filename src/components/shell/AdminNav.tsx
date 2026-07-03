@@ -7,7 +7,7 @@ import { createClient } from '@/lib/supabase/client';
 import { ROLE_LABEL, type UserRole } from '@/types';
 import {
   LayoutDashboard, ClipboardList, Building2, Package, Tag, Bot, Bell,
-  User, Users, LogOut, Menu, X, ClipboardCheck, Globe,
+  User, Users, LogOut, Menu, X, ClipboardCheck, Globe, CreditCard,
 } from 'lucide-react';
 import { ThemeToggle } from '@/components/shared/ThemeToggle';
 
@@ -27,6 +27,7 @@ const NAV: NavItem[] = [
   { href: '/admin/inventory',    label: '재고',     icon: Package,        roles: ['super_admin', 'admin'] },
   { href: '/admin/quality',      label: '품질검수', icon: ClipboardCheck, roles: ['super_admin', 'admin'] },
   { href: '/admin/vendors',      label: '업체발굴', icon: Globe,          roles: ['super_admin', 'admin'] },
+  { href: '/admin/vendors/cards',label: '명함',     icon: CreditCard,     roles: ['super_admin', 'admin'] },
   { href: '/admin/notifications',label: '알림 이력', icon: Bell,           roles: ['super_admin', 'admin'] },
   { href: '/admin/users',        label: '사용자',   icon: Users,          roles: ['super_admin'] },
   { href: '/admin/acis',         label: 'ACIS',     icon: Bot,            roles: ['super_admin', 'admin'], external: true },
@@ -55,7 +56,10 @@ export function AdminNav({ role }: { role: UserRole | null }) {
   }
 
   function renderLink(n: NavItem, onClick?: () => void) {
-    const active = !n.external && pathname.startsWith(n.href);
+    // 최장 일치 우선 — /admin/vendors 와 /admin/vendors/cards 중복 하이라이트 방지
+    const matches = (h: string) => pathname === h || pathname.startsWith(h + '/');
+    const active = !n.external && matches(n.href)
+      && !items.some((o) => !o.external && o.href.length > n.href.length && matches(o.href));
     const Icon = n.icon;
     const inner = (<><Icon className="w-4 h-4" />{n.label}</>);
     return n.external ? (
