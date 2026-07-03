@@ -15,8 +15,9 @@ import { apiError } from '@/lib/api-error';
 
 export const dynamic = 'force-dynamic';
 
-// 명함 인식 모델 — 기본 최신 Opus, 필요시 env 로 교체(비용/속도 조정)
-const OCR_MODEL = process.env.CARD_OCR_MODEL || 'claude-opus-4-8';
+// 명함 인식 모델 — 기본 최신 Opus 4.7 (실존재 모델), 필요시 env 로 교체 (비용/속도)
+// 예: CARD_OCR_MODEL=claude-sonnet-4-6 → 6~10배 저렴, 명함 정도는 충분
+const OCR_MODEL = process.env.CARD_OCR_MODEL || 'claude-opus-4-7';
 const ANTHROPIC_URL = 'https://api.anthropic.com/v1/messages';
 
 const PROMPT = [

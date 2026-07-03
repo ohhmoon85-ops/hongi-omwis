@@ -47,26 +47,34 @@ export function AdminNav({ role }: { role: UserRole | null }) {
     router.refresh();
   }
 
-  function linkClasses(active: boolean) {
-    return `inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${
+  function linkClasses(active: boolean, compact: boolean) {
+    // compact=true 는 데스크톱 네비게이션 — 라벨은 xl 부터 노출, 좁은 화면에서도 아이콘만으로 이해 가능
+    return `inline-flex items-center gap-1.5 ${compact ? 'px-2.5' : 'px-3'} py-1.5 rounded-lg text-sm font-medium whitespace-nowrap transition-colors shrink-0 ${
       active
         ? 'bg-[#c8962e]/15 text-[#e0bf70] ring-1 ring-[#c8962e]/30'
         : 'text-gray-400 hover:text-white hover:bg-white/[0.05]'
     }`;
   }
 
-  function renderLink(n: NavItem, onClick?: () => void) {
+  function renderLink(n: NavItem, onClick?: () => void, opts?: { compact?: boolean }) {
+    const compact = opts?.compact ?? false;
     // 최장 일치 우선 — /admin/vendors 와 /admin/vendors/cards 중복 하이라이트 방지
     const matches = (h: string) => pathname === h || pathname.startsWith(h + '/');
     const active = !n.external && matches(n.href)
       && !items.some((o) => !o.external && o.href.length > n.href.length && matches(o.href));
     const Icon = n.icon;
-    const inner = (<><Icon className="w-4 h-4" />{n.label}</>);
+    // 데스크톱 compact: 라벨은 xl+ (1280px+) 부터 노출, 그 이하 화면은 아이콘만 (title 툴팁으로 라벨 확인)
+    const inner = (
+      <>
+        <Icon className="w-4 h-4 shrink-0" />
+        <span className={compact ? 'hidden xl:inline' : ''}>{n.label}</span>
+      </>
+    );
     return n.external ? (
       <a key={n.href} href={n.href} target="_blank" rel="noopener noreferrer"
-        onClick={onClick} className={linkClasses(false)}>{inner}</a>
+        onClick={onClick} title={n.label} className={linkClasses(false, compact)}>{inner}</a>
     ) : (
-      <Link key={n.href} href={n.href} onClick={onClick} className={linkClasses(active)}>{inner}</Link>
+      <Link key={n.href} href={n.href} onClick={onClick} title={n.label} className={linkClasses(active, compact)}>{inner}</Link>
     );
   }
 
@@ -79,26 +87,29 @@ export function AdminNav({ role }: { role: UserRole | null }) {
           <span className="hidden sm:inline text-[11px] text-gray-500">(주)홍지</span>
         </Link>
 
-        {/* 데스크톱 메뉴 (md 이상) */}
-        <nav className="hidden md:flex items-center gap-1 overflow-x-auto">
-          {items.map((n) => renderLink(n))}
+        {/* 데스크톱 메뉴 (md 이상) — flex-1 min-w-0 로 나머지 공간 차지, 필요 시 가로 스크롤 */}
+        <nav
+          className="hidden md:flex flex-1 min-w-0 items-center gap-0.5 overflow-x-auto"
+          style={{ scrollbarWidth: 'none' }}
+        >
+          {items.map((n) => renderLink(n, undefined, { compact: true }))}
         </nav>
 
-        {/* 데스크톱 우측 (md 이상) */}
-        <div className="hidden md:flex ml-auto items-center gap-2 shrink-0">
+        {/* 데스크톱 우측 (md 이상) — 좁은 화면에서 최소한만 노출 */}
+        <div className="hidden md:flex ml-2 items-center gap-1 shrink-0">
           {role && (
-            <span className="text-[11px] px-2 py-1 rounded-full bg-white/[0.05] text-gray-300 border border-white/[0.06]">
+            <span className="hidden xl:inline text-[11px] px-2 py-1 rounded-full bg-white/[0.05] text-gray-300 border border-white/[0.06]">
               {ROLE_LABEL[role]}
             </span>
           )}
           <ThemeToggle variant="dark" />
-          <Link href="/account" className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm text-gray-400 hover:text-white hover:bg-white/[0.05] transition-colors" title="내 계정">
+          <Link href="/account" className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-sm text-gray-400 hover:text-white hover:bg-white/[0.05] transition-colors" title="내 계정">
             <User className="w-4 h-4" />
-            <span className="hidden lg:inline">내 계정</span>
+            <span className="hidden 2xl:inline">내 계정</span>
           </Link>
-          <button onClick={logout} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm text-gray-400 hover:text-white hover:bg-white/[0.05] transition-colors" aria-label="로그아웃">
+          <button onClick={logout} className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-sm text-gray-400 hover:text-white hover:bg-white/[0.05] transition-colors" aria-label="로그아웃">
             <LogOut className="w-4 h-4" />
-            <span className="hidden lg:inline">로그아웃</span>
+            <span className="hidden 2xl:inline">로그아웃</span>
           </button>
         </div>
 
