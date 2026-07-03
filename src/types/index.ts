@@ -225,6 +225,42 @@ export const VENDOR_STATUS_BADGE: Record<VendorStatus, { label: string; color: s
   on_hold:    { label: '보류',      color: 'bg-amber-500/20 text-amber-300 border-amber-500/30' },
 };
 
+// ----------------------------------------------------------------------------
+// 명함 촬영·수집 (Business Cards) — 현장에서 찍고 끝, 나중에 몰아서 업체로 정리
+// ----------------------------------------------------------------------------
+export type BusinessCardStatus = 'unprocessed' | 'processed' | 'discarded';
+
+/** AI 명함 인식 결과 (선택 기능) — 모든 필드는 못 읽으면 null */
+export interface CardOcrResult {
+  company: string | null;
+  contact_name: string | null;
+  title: string | null;
+  phone: string | null;
+  wechat: string | null;
+  email: string | null;
+  address: string | null;
+}
+
+export interface BusinessCard {
+  id: string;
+  photo_path: string;          // Storage 경로 (운영) / dataURL (dev)
+  photo_url?: string | null;   // 화면 렌더용 서명 URL (조회 시 채움)
+  event_name: string | null;
+  quick_memo: string | null;
+  status: BusinessCardStatus;
+  candidate_vendor_id: string | null;
+  ocr_result: CardOcrResult | null;
+  captured_at: string;
+  processed_at: string | null;
+  created_at: string;
+}
+
+export const CARD_STATUS_BADGE: Record<BusinessCardStatus, { label: string; color: string }> = {
+  unprocessed: { label: '미처리',   color: 'bg-amber-500/20 text-amber-300 border-amber-500/30' },
+  processed:   { label: '처리 완료', color: 'bg-green-500/20 text-green-300 border-green-500/30' },
+  discarded:   { label: '버림',      color: 'bg-gray-500/20 text-gray-400 border-gray-500/30' },
+};
+
 // 품목별 검수 기준
 export interface InspectionSpec {
   product_id: string;
