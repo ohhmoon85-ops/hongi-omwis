@@ -216,9 +216,6 @@ export function InspectionWizard() {
       photo_urls: photoPaths,
       memo: memo.trim() || null,
       verdict: verdictResult.verdict === 'PASS' ? 'PASS' : 'FAIL',
-      purpose: 'incoming',
-      candidate_vendor_id: null,
-      commercial_snapshot: null,
       created_at: now,
     };
 

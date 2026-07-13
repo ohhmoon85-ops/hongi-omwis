@@ -237,29 +237,6 @@ CREATE TABLE IF NOT EXISTS inspection_specs (
   updated_at TIMESTAMPTZ DEFAULT now()
 );
 
--- ⑯ 후보 업체 (2026-07-04 vendor evaluation)
-CREATE TABLE IF NOT EXISTS candidate_vendors (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  name VARCHAR(100) NOT NULL,
-  location VARCHAR(100),
-  contact_name VARCHAR(50),
-  wechat VARCHAR(50),
-  phone VARCHAR(30),
-  email VARCHAR(100),
-  price_note VARCHAR(100),
-  moq VARCHAR(50),
-  lead_time VARCHAR(50),
-  payment_terms VARCHAR(100),
-  factory_note TEXT,
-  status VARCHAR(20) DEFAULT 'evaluating'
-    CHECK (status IN ('evaluating','approved','rejected','on_hold')),
-  approved_at TIMESTAMPTZ,
-  approved_by UUID REFERENCES auth.users(id),
-  memo TEXT,
-  created_at TIMESTAMPTZ DEFAULT now(),
-  updated_at TIMESTAMPTZ DEFAULT now()
-);
-
 -- ============================================================================
 -- 주문번호 자동 생성 함수
 -- ============================================================================
