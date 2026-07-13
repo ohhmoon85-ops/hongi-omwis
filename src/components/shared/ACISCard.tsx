@@ -37,8 +37,8 @@ export async function ACISCard() {
           {badge.label}
         </div>
         <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-xs text-gray-400">
-          <div>SPI</div><div className="text-right text-gray-200">{formatNumber(s.spi, 1)}</div>
-          <div>ERI</div><div className="text-right text-gray-200">{formatNumber(s.eri, 2)}</div>
+          <div>SPI</div><div className="text-right text-gray-200">{formatNumber(s.spi, 3)}</div>
+          <div>ERI</div><div className="text-right text-gray-200">{formatNumber(s.eri, 3)}</div>
           <div>LME</div><div className="text-right text-gray-200">${formatNumber(s.lme_price)}/t</div>
           <div>CNY/KRW</div><div className="text-right text-gray-200">{formatNumber(s.cny_krw, 2)}</div>
           <div>RPCI</div><div className="text-right text-gray-200">{formatNumber(s.rpci)}</div>
