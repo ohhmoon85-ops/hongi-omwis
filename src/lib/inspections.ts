@@ -26,33 +26,18 @@ function mapRow(row: any): Inspection {
     photo_urls: row.photo_urls ?? [],
     memo: row.memo ?? null,
     verdict: row.verdict,
-    purpose: row.purpose ?? 'incoming',
-    candidate_vendor_id: row.candidate_vendor_id ?? null,
-    candidate_vendor_name: row.candidate_vendors?.name ?? undefined,
-    commercial_snapshot: row.commercial_snapshot ?? null,
     created_at: row.created_at,
   };
 }
 
 const INSPECTION_SELECT =
-  '*, products(name, type, thickness, width), candidate_vendors(name)';
+  '*, products(name, type, thickness, width)';
 
-export async function fetchInspections(purpose?: 'incoming' | 'vendor_sample'): Promise<Inspection[]> {
-  const supabase = createClient();
-  let q = supabase.from('inspections').select(INSPECTION_SELECT);
-  if (purpose) q = q.eq('purpose', purpose);
-  const { data, error } = await q.order('inspected_at', { ascending: false });
-  if (error) throw new Error(error.message);
-  return (data ?? []).map(mapRow);
-}
-
-// 특정 후보 업체의 검수 이력 (compare 페이지 · 업체 상세)
-export async function fetchInspectionsByVendor(vendorId: string): Promise<Inspection[]> {
+export async function fetchInspections(): Promise<Inspection[]> {
   const supabase = createClient();
   const { data, error } = await supabase
     .from('inspections')
     .select(INSPECTION_SELECT)
-    .eq('candidate_vendor_id', vendorId)
     .order('inspected_at', { ascending: false });
   if (error) throw new Error(error.message);
   return (data ?? []).map(mapRow);

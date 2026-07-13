@@ -7,7 +7,7 @@ import { createClient } from '@/lib/supabase/client';
 import { ROLE_LABEL, type UserRole } from '@/types';
 import {
   LayoutDashboard, ClipboardList, Building2, Package, Tag, Bot, Bell,
-  User, Users, LogOut, Menu, X, ClipboardCheck, Globe, CreditCard,
+  User, Users, LogOut, Menu, X, ClipboardCheck,
 } from 'lucide-react';
 import { ThemeToggle } from '@/components/shared/ThemeToggle';
 
@@ -26,8 +26,6 @@ const NAV: NavItem[] = [
   { href: '/admin/products',     label: '품목',     icon: Tag,            roles: ['super_admin', 'admin'] },
   { href: '/admin/inventory',    label: '재고',     icon: Package,        roles: ['super_admin', 'admin'] },
   { href: '/admin/quality',      label: '품질검수', icon: ClipboardCheck, roles: ['super_admin', 'admin'] },
-  { href: '/admin/vendors',      label: '업체발굴', icon: Globe,          roles: ['super_admin', 'admin'] },
-  { href: '/admin/vendors/cards',label: '명함',     icon: CreditCard,     roles: ['super_admin', 'admin'] },
   { href: '/admin/notifications',label: '알림 이력', icon: Bell,           roles: ['super_admin', 'admin'] },
   { href: '/admin/users',        label: '사용자',   icon: Users,          roles: ['super_admin'] },
   { href: '/admin/acis',         label: 'ACIS',     icon: Bot,            roles: ['super_admin', 'admin'], external: true },
@@ -58,7 +56,7 @@ export function AdminNav({ role }: { role: UserRole | null }) {
 
   function renderLink(n: NavItem, onClick?: () => void, opts?: { compact?: boolean }) {
     const compact = opts?.compact ?? false;
-    // 최장 일치 우선 — /admin/vendors 와 /admin/vendors/cards 중복 하이라이트 방지
+    // 최장 일치 우선 — 상위/하위 경로 중복 하이라이트 방지
     const matches = (h: string) => pathname === h || pathname.startsWith(h + '/');
     const active = !n.external && matches(n.href)
       && !items.some((o) => !o.external && o.href.length > n.href.length && matches(o.href));
