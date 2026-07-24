@@ -39,6 +39,11 @@ export const ACIS_APP_URL = ACIS_API_URL;
 // ─── ACIS 산식 (ACIS 프론트엔드와 동일) ─────────────────────────────────────
 const BASE_SHFE = 25250; // 2026 New Normal 기준 SHFE (CNY/MT)
 
+// New Normal 신호 임계값 — ACIS config/acis-config.js (newNormal.spi / .eri) 와 동일
+const SPI_BUY_MAX = 1.02;        // SPI ≤ 1.02 → 매수 후보
+const SPI_HOLD_MAX = 1.05;       // SPI > 1.05 → 자제(AVOID)
+const ERI_FAVORABLE_MAX = 0.98;  // ERI ≤ 0.98 → 환율 유리(BUY 확정 조건)
+
 // RPCI = (SHFE CNY/MT × CNY/KRW + 해상운임) × (1 + 관세율 + 부대비용율)
 function calcRPCI(shfeCny: number, cnyKrw: number, tariff = 0.05, misc = 0.03): number {
   const shipping = 55000; // KRW/MT
@@ -59,15 +64,15 @@ function ymdToISO(t: string): string {
 function mockSignal(): ACISSignalResponse {
   return {
     signal: 'HOLD',
-    spi: 102.3,
-    eri: 0.85,
+    spi: 1.02,
+    eri: 0.99,
     lme_price: 2620,
     shfe_price: 19850,
     cny_krw: 187.4,
     usd_krw: 1382.0,
     rpci: 4520,
     recommendation:
-      '단기 시황 안정 — 다음 BUY 시점은 RPCI 4,400 이하 진입 시. (Mock 데이터)',
+      '가격·환율 모두 기준 근처 — 관망 구간. (Mock 데이터)',
     is_mock: true,
     fetched_at: new Date().toISOString(),
   };
@@ -79,19 +84,21 @@ function mockSignal(): ACISSignalResponse {
 interface SeriesPoint { date: string; price: number }
 interface RateRow { TIME: string; DATA_VALUE: string }
 
-function buildRecommendation(
-  signal: ACISSignal, devPct: number, eri: number,
-): string {
-  const dev = devPct.toFixed(1);
+// ACIS evaluateNewNormal() 의 안내 문구와 동일한 형식 (SPI·ERI 기준)
+function buildRecommendation(signal: ACISSignal, spi: number, eri: number): string {
+  const p = ((spi - 1) * 100).toFixed(1);
+  const f = ((eri - 1) * 100).toFixed(1);
+  const pTxt = (Number(p) >= 0 ? '+' : '') + p + '%';
+  const fTxt = (Number(f) >= 0 ? '+' : '') + f + '%';
   switch (signal) {
-    case 'BUY':
-      return `RPCI가 60일 평균 대비 ${dev}% — 매수 우위 구간. 환율도 유리(ERI ${eri.toFixed(2)}).`;
-    case 'FX-WAIT':
-      return `가격은 매수 구간이나 환율 부담(ERI ${eri.toFixed(2)} ≥ 1.02). 환율 안정 시 진입 권장.`;
     case 'AVOID':
-      return `RPCI가 60일 평균 대비 +${dev}% — 고점 부담. 신규 발주 자제 권장.`;
+      return `알루미늄 가격이 뉴 노멀 기준 대비 ${pTxt} 비쌉니다. 추가 상승 압력 — 신규 발주를 자제하세요.`;
+    case 'BUY':
+      return `가격은 기준 대비 ${pTxt}, 환율도 90일 평균 대비 ${fTxt} 유리합니다. 가격·환율 동시 좋은 절호의 매수 시점.`;
+    case 'FX-WAIT':
+      return `가격은 좋습니다(기준 대비 ${pTxt})만 환율이 평균 대비 ${fTxt} 불리합니다. 환율 진정될 때까지 대기.`;
     default:
-      return `RPCI가 60일 평균 ±3% 이내(${dev}%) — 관망 구간.`;
+      return `가격이 기준 근처(${pTxt}), 환율도 평균 근처(${fTxt}) — 뚜렷한 우위 없음. 소량 분할 구매 또는 관망.`;
   }
 }
 
@@ -125,42 +132,33 @@ async function fetchACISSignal(): Promise<ACISSignalResponse> {
     const curUsd = rates.currentUsd
       ?? parseFloat(rates.usd[rates.usd.length - 1]?.DATA_VALUE ?? '0');
 
-    // RPCI 시계열 — 알루미늄 날짜에 CNY/KRW 를 forward-fill 정렬
     const alSorted = [...al].sort((a, b) => a.date.localeCompare(b.date));
-    let ci = 0;
-    const rpciSeries: number[] = [];
-    for (const p of alSorted) {
-      while (ci + 1 < cnySeries.length && cnySeries[ci + 1].date <= p.date) ci++;
-      const cny = cnySeries[Math.min(ci, cnySeries.length - 1)]?.value ?? curCny;
-      rpciSeries.push(calcRPCI(p.price, cny));
-    }
 
-    const currentRPCI = rpciSeries[rpciSeries.length - 1];
-    const ma60 = movingAvg(rpciSeries, 60);
-
+    // ACIS evaluateNewNormal() 과 동일: 현재 지표 = 마지막 SHFE·현재 환율 기준
+    const curShfe = alSorted[alSorted.length - 1].price;
+    const currentRPCI = calcRPCI(curShfe, curCny);
     const baseRpci = calcRPCI(BASE_SHFE, curCny);
     const spi = baseRpci > 0 ? currentRPCI / baseRpci : 1;
-    const cnyAvg90 = movingAvg(cnySeries.map((c) => c.value), 90);
-    const eri = cnyAvg90 > 0 ? curCny / cnyAvg90 : 1;
+    const cnyAvg = movingAvg(cnySeries.map((c) => c.value), 90); // 90일 평균 환율
+    const eri = cnyAvg > 0 ? curCny / cnyAvg : 1;
 
-    // 신호: RPCI vs MA60 ±3%, 매수권이나 환율 불리(ERI≥1.02)면 FX-WAIT
+    // 4단계 신호 (New Normal — ACIS config 임계값과 동일)
     let signal: ACISSignal;
-    if (ma60 > 0 && currentRPCI > ma60 * 1.03) signal = 'AVOID';
-    else if (ma60 > 0 && currentRPCI < ma60 * 0.97) signal = eri >= 1.02 ? 'FX-WAIT' : 'BUY';
+    if (spi > SPI_HOLD_MAX) signal = 'AVOID';
+    else if (spi <= SPI_BUY_MAX && eri <= ERI_FAVORABLE_MAX) signal = 'BUY';
+    else if (spi <= SPI_BUY_MAX && eri > ERI_FAVORABLE_MAX) signal = 'FX-WAIT';
     else signal = 'HOLD';
-
-    const devPct = ma60 > 0 ? (currentRPCI / ma60 - 1) * 100 : 0;
 
     return {
       signal,
-      spi: Math.round(spi * 1000) / 10,   // 비율 → 지수(×100, 소수1)
-      eri: Math.round(eri * 100) / 100,
+      spi: Math.round(spi * 1000) / 1000,   // 비율 (예: 0.949)
+      eri: Math.round(eri * 1000) / 1000,   // 비율 (예: 1.009)
       lme_price: lme[lme.length - 1].price,
-      shfe_price: alSorted[alSorted.length - 1].price,
+      shfe_price: curShfe,
       cny_krw: curCny,
       usd_krw: curUsd,
       rpci: currentRPCI,
-      recommendation: buildRecommendation(signal, devPct, eri),
+      recommendation: buildRecommendation(signal, spi, eri),
       is_mock: false,
       fetched_at: new Date().toISOString(),
     };
@@ -170,8 +168,38 @@ async function fetchACISSignal(): Promise<ACISSignalResponse> {
   }
 }
 
+// ACIS /api/signal 응답 → ACISSignalResponse 매핑 (단일 진실 공급원)
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function mapSignalEndpoint(j: any): ACISSignalResponse {
+  const sig = ['BUY', 'FX-WAIT', 'HOLD', 'AVOID'].includes(j.signal) ? j.signal : 'UNKNOWN';
+  return {
+    signal: sig as ACISSignal,
+    spi: Number(j.spi) || 0,
+    eri: Number(j.eri) || 0,
+    lme_price: Number(j.lme_price) || 0,
+    shfe_price: Number(j.shfe_price) || 0,
+    cny_krw: Number(j.cny_krw) || 0,
+    usd_krw: Number(j.usd_krw) || 0,
+    rpci: Number(j.rpci) || 0,
+    recommendation: typeof j.recommendation === 'string' ? j.recommendation : '',
+    is_mock: false,
+    fetched_at: typeof j.fetched_at === 'string' ? j.fetched_at : new Date().toISOString(),
+  };
+}
+
 export async function getACISSignal(): Promise<ACISSignalResponse> {
   if (!ACIS_API_URL) return mockSignal();
+  // 1) 단일 진실 공급원 — ACIS 가 계산한 신호를 그대로 사용 (UI 와 항상 일치)
+  try {
+    const res = await fetch(`${ACIS_API_URL}/api/signal`, { next: { revalidate: 600 } });
+    if (res.ok) {
+      const j = await res.json();
+      if (j && j.signal && !j.error) return mapSignalEndpoint(j);
+    }
+  } catch (err) {
+    console.error('[ACIS] /api/signal 실패 — 원천 데이터로 폴백 계산:', err);
+  }
+  // 2) 폴백 — /api/signal 미배포·오류 시 동일 산식으로 재계산 (무중단)
   return fetchACISSignal();
 }
 

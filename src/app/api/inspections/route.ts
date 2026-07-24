@@ -33,19 +33,9 @@ interface InspectionBody {
   memo?: string | null;
   verdict: 'PASS' | 'FAIL';
 
-  // PASS 시 자동으로 재고 lot 생성 (incoming 만)
+  // PASS 시 자동으로 재고 lot 생성
   register_inventory?: boolean;
   quantity_kg?: number;  // register_inventory=true 시 필수
-
-  // 2026-07-04 벤더 평가 확장
-  purpose?: 'incoming' | 'vendor_sample';   // 기본 incoming
-  candidate_vendor_id?: string | null;      // vendor_sample 인 경우
-  commercial_snapshot?: {
-    price_note?: string;
-    moq?: string;
-    lead_time?: string;
-    payment_terms?: string;
-  } | null;
 }
 
 export async function POST(req: NextRequest) {
@@ -70,8 +60,6 @@ export async function POST(req: NextRequest) {
 
   const admin = createAdminClient();
 
-  const purpose = body.purpose ?? 'incoming';
-
   // ─ 1) 검수 인서트 ────────────────────────────────────────────────────
   const { data: insp, error: iErr } = await admin
     .from('inspections')
@@ -91,19 +79,15 @@ export async function POST(req: NextRequest) {
       photo_urls: body.photo_urls ?? [],
       memo: body.memo ?? null,
       verdict: body.verdict,
-      purpose,
-      candidate_vendor_id: body.candidate_vendor_id ?? null,
-      commercial_snapshot: body.commercial_snapshot ?? null,
       created_by: user.id,
     })
     .select('id')
     .single();
   if (iErr || !insp) return apiError('internal', '검수 저장 실패', iErr?.message);
 
-  // ─ 2) PASS + incoming + register_inventory → inventory lot 생성 ──────
-  //     vendor_sample 은 재고 생성 안 함 (평가 이력만 보존)
+  // ─ 2) PASS + register_inventory → inventory lot 생성 ────────────────
   let inventoryId: string | null = null;
-  if (purpose === 'incoming' && body.verdict === 'PASS' && body.register_inventory) {
+  if (body.verdict === 'PASS' && body.register_inventory) {
     const qty = Number(body.quantity_kg);
     if (!qty || qty <= 0) {
       return apiError('validation', '재고 등록 시 quantity_kg (kg) 필수');

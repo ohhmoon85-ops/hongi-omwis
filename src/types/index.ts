@@ -153,16 +153,6 @@ export interface ChecklistItem {
   r: CheckResult;         // 저장된 응답
 }
 
-export type InspectionPurpose = 'incoming' | 'vendor_sample';
-
-// 평가 시점 상용 조건 스냅샷 (업체가 나중에 조건 바꿔도 원 값 보존)
-export interface CommercialSnapshot {
-  price_note?: string;      // "USD 2,450/t"
-  moq?: string;             // "5t"
-  lead_time?: string;       // "30일"
-  payment_terms?: string;   // "T/T 30/70"
-}
-
 export interface Inspection {
   id: string;
   inventory_id: string | null;   // PASS 시 만들어진 재고 lot 참조 (incoming 만)
@@ -186,80 +176,8 @@ export interface Inspection {
   memo: string | null;
   verdict: 'PASS' | 'FAIL';            // DB CHECK 상 PENDING 저장 불가
 
-  // 2026-07-04 vendor evaluation 확장 (008)
-  purpose: InspectionPurpose;                          // incoming | vendor_sample
-  candidate_vendor_id: string | null;                  // vendor_sample 인 경우 참조
-  candidate_vendor_name?: string;                      // 조인 표시용
-  commercial_snapshot: CommercialSnapshot | null;      // 평가 시점 조건
-
   created_at: string;
 }
-
-// 후보 업체 상태
-export type VendorStatus = 'evaluating' | 'approved' | 'rejected' | 'on_hold';
-
-export interface CandidateVendor {
-  id: string;
-  name: string;
-  location: string | null;
-  contact_name: string | null;
-  wechat: string | null;
-  phone: string | null;
-  email: string | null;
-  price_note: string | null;
-  moq: string | null;
-  lead_time: string | null;
-  payment_terms: string | null;
-  factory_note: string | null;
-  status: VendorStatus;
-  approved_at: string | null;
-  memo: string | null;
-  created_at: string;
-  updated_at: string;
-}
-
-export const VENDOR_STATUS_BADGE: Record<VendorStatus, { label: string; color: string }> = {
-  evaluating: { label: '평가 중',   color: 'bg-blue-500/20 text-blue-300 border-blue-500/30' },
-  approved:   { label: '승격 완료', color: 'bg-green-500/20 text-green-300 border-green-500/30' },
-  rejected:   { label: '탈락',      color: 'bg-red-500/20 text-red-300 border-red-500/30' },
-  on_hold:    { label: '보류',      color: 'bg-amber-500/20 text-amber-300 border-amber-500/30' },
-};
-
-// ----------------------------------------------------------------------------
-// 명함 촬영·수집 (Business Cards) — 현장에서 찍고 끝, 나중에 몰아서 업체로 정리
-// ----------------------------------------------------------------------------
-export type BusinessCardStatus = 'unprocessed' | 'processed' | 'discarded';
-
-/** AI 명함 인식 결과 (선택 기능) — 모든 필드는 못 읽으면 null */
-export interface CardOcrResult {
-  company: string | null;
-  contact_name: string | null;
-  title: string | null;
-  phone: string | null;
-  wechat: string | null;
-  email: string | null;
-  address: string | null;
-}
-
-export interface BusinessCard {
-  id: string;
-  photo_path: string;          // Storage 경로 (운영) / dataURL (dev)
-  photo_url?: string | null;   // 화면 렌더용 서명 URL (조회 시 채움)
-  event_name: string | null;
-  quick_memo: string | null;
-  status: BusinessCardStatus;
-  candidate_vendor_id: string | null;
-  ocr_result: CardOcrResult | null;
-  captured_at: string;
-  processed_at: string | null;
-  created_at: string;
-}
-
-export const CARD_STATUS_BADGE: Record<BusinessCardStatus, { label: string; color: string }> = {
-  unprocessed: { label: '미처리',   color: 'bg-amber-500/20 text-amber-300 border-amber-500/30' },
-  processed:   { label: '처리 완료', color: 'bg-green-500/20 text-green-300 border-green-500/30' },
-  discarded:   { label: '버림',      color: 'bg-gray-500/20 text-gray-400 border-gray-500/30' },
-};
 
 // 품목별 검수 기준
 export interface InspectionSpec {

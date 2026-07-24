@@ -13,7 +13,6 @@ import { createClient } from '@/lib/supabase/client';
 
 export const CUSTOMS_DOCS_BUCKET = 'customs-docs';
 export const INSPECTION_PHOTOS_BUCKET = 'inspection-photos';
-export const BUSINESS_CARDS_BUCKET = 'business-cards';
 
 export interface UploadResult {
   path: string;        // 버킷 내 경로 (예: 2026/03/abc.jpg)
@@ -120,55 +119,4 @@ export async function getInspectionPhotoUrls(
 export async function deleteInspectionPhoto(path: string): Promise<void> {
   const supabase = createClient();
   await supabase.storage.from(INSPECTION_PHOTOS_BUCKET).remove([path]);
-}
-
-// ─── 명함 사진 ──────────────────────────────────────────────────────────────
-// 촬영 즉시 리사이즈된 JPEG(Blob)을 올리고 path 를 business_cards.photo_path 에 저장.
-
-/** 명함 사진 업로드 (private bucket) — path 반환 */
-export async function uploadBusinessCard(blob: Blob): Promise<UploadResult> {
-  const supabase = createClient();
-  const path = makePath('card.jpg');
-  const { error: upErr } = await supabase.storage
-    .from(BUSINESS_CARDS_BUCKET)
-    .upload(path, blob, {
-      cacheControl: '3600',
-      upsert: false,
-      contentType: 'image/jpeg',
-    });
-  if (upErr) throw new Error(upErr.message);
-  return { path };
-}
-
-/** 저장된 명함 path → 서명 URL (1시간). 실패 시 null. */
-export async function getBusinessCardUrl(path: string): Promise<string | null> {
-  const supabase = createClient();
-  const { data, error } = await supabase.storage
-    .from(BUSINESS_CARDS_BUCKET)
-    .createSignedUrl(path, 3600);
-  if (error) {
-    console.error('[storage] card signed url failed:', error.message);
-    return null;
-  }
-  return data?.signedUrl ?? null;
-}
-
-/** 여러 명함 path 를 한 번에 서명 URL 로 변환 */
-export async function getBusinessCardUrls(
-  paths: string[],
-): Promise<Record<string, string | null>> {
-  const supabase = createClient();
-  const entries = await Promise.all(
-    paths.map(async (path) => {
-      try {
-        const { data, error } = await supabase.storage
-          .from(BUSINESS_CARDS_BUCKET)
-          .createSignedUrl(path, 3600);
-        return [path, error ? null : (data?.signedUrl ?? null)] as const;
-      } catch {
-        return [path, null] as const;
-      }
-    }),
-  );
-  return Object.fromEntries(entries);
 }
