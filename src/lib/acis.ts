@@ -6,6 +6,8 @@
 // .env.local 의 ACIS_API_URL 만 채우면 자동으로 실제 호출로 전환됩니다.
 // ============================================================================
 
+import { unstable_cache } from 'next/cache';
+
 export type ACISSignal = 'BUY' | 'FX-WAIT' | 'HOLD' | 'AVOID' | 'UNKNOWN';
 
 export interface ACISSignalResponse {
@@ -329,6 +331,166 @@ export async function getMarketSeries(): Promise<MarketSeries> {
     console.error('[ACIS] market series fetch failed:', err);
     return { ...mockMarketSeries(), is_mock: true };
   }
+}
+
+// ─── 공급자 견적 상호 비교 (도착원가) — ACIS ⑥번 섹션과 동일 산식 ─────────
+// ACIS 프론트엔드의 DEFAULT_QUOTES + computeQuote() 를 서버 측에서 재현.
+// USD/KRW 는 ACIS /api/rates 실시간값(Yahoo Finance) 을 사용해 상시 최신화.
+export type QuoteProduct = 'raw-coil' | 'raw-sheet' | 'dos-coil' | 'dos-sheet' | 'oil' | 'water';
+
+export interface SupplierQuote {
+  id: string;
+  supplier: string;
+  product: QuoteProduct;
+  inco: 'CIF' | 'FOB';
+  currency: 'USD' | 'CNY';
+  pricePerTon: number;
+  cut: boolean;
+  date: string;
+}
+
+export interface ComputedQuote extends SupplierQuote {
+  cifUsd: number;
+  cifKrw: number;
+  tariffKrw: number;
+  totalKrw: number;   // 도착 원/톤
+  perKg: number;
+  perM2: number;
+  marginPct: number;
+  isWinner: boolean;  // 같은 product 중 최저가 (2건 이상일 때만)
+}
+
+export interface QuoteCompareResult {
+  quotes: ComputedQuote[];
+  params: {
+    usdKrw: number;
+    usdCny: number;
+    freight: number;
+    overhead: number;
+    tariff: number;
+    domestic: number;
+    kgm2: number;
+  };
+  best: { totalKrw: number; supplier: string; product: QuoteProduct } | null;
+  is_mock: boolean;
+  fetched_at: string;
+}
+
+export const QUOTE_PRODUCT_LABELS: Record<QuoteProduct, string> = {
+  'raw-coil':  '생알 코일',
+  'raw-sheet': '생알 시트',
+  'dos-coil':  'DOS Oil 코일',
+  'dos-sheet': 'DOS Oil 시트',
+  'oil':       '지용성 코팅',
+  'water':     '수용성 코팅',
+};
+
+// 2026.7.24 신다통·워스윌 CIF 인천 견적 프리셋 — ACIS index.html 과 동일
+const DEFAULT_QUOTES: SupplierQuote[] = [
+  { id:'xd-raw-coil',  supplier:'신다통 (Xindatong)', product:'raw-coil',
+    inco:'CIF', currency:'USD', pricePerTon:4129, cut:false, date:'2026-07-24' },
+  { id:'xd-raw-sheet', supplier:'신다통 (Xindatong)', product:'raw-sheet',
+    inco:'CIF', currency:'USD', pricePerTon:4203, cut:true,  date:'2026-07-24' },
+  { id:'xd-dos-coil',  supplier:'신다통 (Xindatong)', product:'dos-coil',
+    inco:'CIF', currency:'USD', pricePerTon:4277, cut:false, date:'2026-07-24' },
+  { id:'ws-raw-coil',  supplier:'워스윌 (Worthwill)', product:'raw-coil',
+    inco:'CIF', currency:'USD', pricePerTon:4142, cut:false, date:'2026-07-24' },
+  { id:'ws-dos-coil',  supplier:'워스윌 (Worthwill)', product:'dos-coil',
+    inco:'CIF', currency:'USD', pricePerTon:4408, cut:false, date:'2026-07-24' },
+];
+
+// ACIS 프론트엔드 getQuoteParams() 기본값과 동일
+const QUOTE_DEFAULTS = {
+  usdKrw:   1470,
+  usdCny:   6.75,
+  freight:  39,        // FOB → CIF 보정 USD/톤
+  overhead: 35000,     // 부대비 원/톤
+  tariff:   7.2,       // 관세율 %
+  domestic: 6500,      // 국내 비교가 원/kg
+  kgm2:     0.3252,    // 0.17mm 기준 kg/㎡
+};
+
+function computeQuote(
+  q: SupplierQuote,
+  p: typeof QUOTE_DEFAULTS,
+): Omit<ComputedQuote, keyof SupplierQuote | 'isWinner'> {
+  const usdPerTon = q.currency === 'CNY' ? q.pricePerTon / p.usdCny : q.pricePerTon;
+  const cifUsd    = q.inco === 'FOB' ? usdPerTon + p.freight : usdPerTon;
+  const cifKrw    = cifUsd * p.usdKrw;
+  const tariffKrw = cifKrw * (p.tariff / 100);
+  const totalKrw  = cifKrw + tariffKrw + p.overhead;
+  const perKg     = totalKrw / 1000;
+  const perM2     = perKg * p.kgm2;
+  const marginPct = p.domestic > 0 ? ((p.domestic - perKg) / p.domestic) * 100 : 0;
+  return { cifUsd, cifKrw, tariffKrw, totalKrw, perKg, perM2, marginPct };
+}
+
+// 10분 단위 재계산 — force-dynamic 페이지에서도 fetched_at 이 실제 데이터 갱신 시각을 반영.
+export const getQuoteComparison = unstable_cache(
+  _computeQuoteComparison,
+  ['acis-quote-comparison-v1'],
+  { revalidate: 600, tags: ['acis-quotes'] },
+);
+
+async function _computeQuoteComparison(): Promise<QuoteCompareResult> {
+  const params = { ...QUOTE_DEFAULTS };
+  let is_mock = true;
+
+  if (ACIS_API_URL) {
+    try {
+      const res = await fetch(`${ACIS_API_URL}/api/rates`, { next: { revalidate: 600 } });
+      if (res.ok) {
+        const rates = (await res.json()) as {
+          usd: RateRow[]; cny: RateRow[]; currentUsd?: number; currentCny?: number;
+        };
+        const usdKrw = rates.currentUsd
+          ?? parseFloat(rates.usd?.[rates.usd.length - 1]?.DATA_VALUE ?? '0');
+        const cnyKrw = rates.currentCny
+          ?? parseFloat(rates.cny?.[rates.cny.length - 1]?.DATA_VALUE ?? '0');
+        if (usdKrw > 0) params.usdKrw = usdKrw;
+        if (usdKrw > 0 && cnyKrw > 0) params.usdCny = usdKrw / cnyKrw;
+        is_mock = false;
+      }
+    } catch (err) {
+      console.error('[ACIS] rates fetch failed for quote compare:', err);
+    }
+  }
+
+  const computed: ComputedQuote[] = DEFAULT_QUOTES.map((q) => ({
+    ...q,
+    ...computeQuote(q, params),
+    isWinner: false,
+  }));
+
+  // 같은 product 카테고리 내 최저 총원가 원/톤에 winner 배지 (2건 이상일 때만)
+  const productCount = new Map<QuoteProduct, number>();
+  const winners = new Map<QuoteProduct, { id: string; totalKrw: number }>();
+  for (const c of computed) {
+    productCount.set(c.product, (productCount.get(c.product) ?? 0) + 1);
+    const prev = winners.get(c.product);
+    if (!prev || c.totalKrw < prev.totalKrw) {
+      winners.set(c.product, { id: c.id, totalKrw: c.totalKrw });
+    }
+  }
+  for (const c of computed) {
+    if ((productCount.get(c.product) ?? 0) >= 2 && winners.get(c.product)?.id === c.id) {
+      c.isWinner = true;
+    }
+  }
+
+  // 전 품목 통틀어 절대 최저 도착원가 — 카드 상단 하이라이트용
+  const sortedAll = [...computed].sort((a, b) => a.totalKrw - b.totalKrw);
+  const best = sortedAll[0]
+    ? { totalKrw: sortedAll[0].totalKrw, supplier: sortedAll[0].supplier, product: sortedAll[0].product }
+    : null;
+
+  // 표시 순서: product 별 그룹, 각 그룹 내 totalKrw 오름차순
+  computed.sort((a, b) => {
+    if (a.product !== b.product) return a.product.localeCompare(b.product);
+    return a.totalKrw - b.totalKrw;
+  });
+
+  return { quotes: computed, params, best, is_mock, fetched_at: new Date().toISOString() };
 }
 
 export async function syncInventoryToACIS(status: InventoryStatus): Promise<void> {

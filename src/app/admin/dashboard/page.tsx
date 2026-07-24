@@ -1,5 +1,6 @@
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { ACISCard } from '@/components/shared/ACISCard';
+import { ACISQuoteCompareCard } from '@/components/shared/ACISQuoteCompareCard';
 import { DashboardCharts } from '@/components/admin/DashboardCharts';
 import { createClient } from '@/lib/supabase/server';
 import { isDevMode } from '@/lib/dev-data';
@@ -185,6 +186,13 @@ export default async function AdminDashboardPage() {
         ))}
         {canSeeACIS && <ACISCard />}
       </div>
+
+      {/* ACIS ⑥번 섹션 실시간 스냅샷 — 공급자 견적 상호 비교 (도착원가) */}
+      {canSeeACIS && (
+        <div className="mt-6">
+          <ACISQuoteCompareCard />
+        </div>
+      )}
 
       {/* 그래프 — 매출 추세 + 주문 상태 분포 */}
       <DashboardCharts />
