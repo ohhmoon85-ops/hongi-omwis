@@ -1,6 +1,5 @@
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { getACISSignal, ACIS_SIGNAL_BADGE, ACIS_APP_URL } from '@/lib/acis';
-import { formatNumber } from '@/lib/utils';
 import { ExternalLink } from 'lucide-react';
 
 // 관리자·회장 대시보드 공용 — ACIS 구매 신호 카드
@@ -36,14 +35,7 @@ export async function ACISCard() {
         <div className={`inline-flex px-3 py-1 rounded-full text-sm font-semibold border ${badge.color}`}>
           {badge.label}
         </div>
-        <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-xs text-gray-400">
-          <div>SPI</div><div className="text-right text-gray-200">{formatNumber(s.spi, 1)}</div>
-          <div>ERI</div><div className="text-right text-gray-200">{formatNumber(s.eri, 2)}</div>
-          <div>LME</div><div className="text-right text-gray-200">${formatNumber(s.lme_price)}/t</div>
-          <div>CNY/KRW</div><div className="text-right text-gray-200">{formatNumber(s.cny_krw, 2)}</div>
-          <div>RPCI</div><div className="text-right text-gray-200">{formatNumber(s.rpci)}</div>
-        </div>
-        <p className="text-[11px] text-gray-500 leading-relaxed pt-1 border-t border-[#1f2433]">
+        <p className="text-[11px] text-gray-500 leading-relaxed">
           {s.recommendation}
         </p>
       </CardContent>
