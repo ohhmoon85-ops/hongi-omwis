@@ -8,6 +8,10 @@ import {
 } from '@/lib/acis';
 import { formatNumber } from '@/lib/utils';
 import { ExternalLink } from 'lucide-react';
+import { AutoRefresh } from './AutoRefresh';
+
+// 10분 = 600,000 ms — 환율·SHFE/LME 실시간성 확보
+const REFRESH_INTERVAL_MS = 10 * 60 * 1000;
 
 // ACIS ⑥번 섹션 실시간 스냅샷 — 필요한 3개 카테고리(생알미늄·DOS Oil·지용성)만
 // 도착 최저가로 요약. USD/KRW 는 ACIS /api/rates 실시간값 사용.
@@ -55,6 +59,7 @@ export async function ACISQuoteCompareCard() {
       </CardHeader>
 
       <CardContent className="space-y-4">
+        <AutoRefresh intervalMs={REFRESH_INTERVAL_MS} />
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           {tiles.map((t) => (
             <div key={t.key} className="bg-[#0f1117] border border-[#1f2433] rounded-lg p-4">
@@ -91,7 +96,10 @@ export async function ACISQuoteCompareCard() {
           <div>USD/KRW <span className="text-gray-300 tabular-nums">{formatNumber(params.usdKrw, 2)}</span></div>
           <div>관세 <span className="text-gray-300">{params.tariff}%</span></div>
           <div>부대비 <span className="text-gray-300 tabular-nums">{formatNumber(params.overhead)}원/톤</span></div>
-          <div className="sm:text-right">갱신 {new Date(fetched_at).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}</div>
+          <div className="sm:text-right">
+            갱신 {new Date(fetched_at).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}
+            <span className="text-gray-600 ml-1">· 10분 자동</span>
+          </div>
         </div>
       </CardContent>
     </Card>

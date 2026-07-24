@@ -6,6 +6,8 @@
 // .env.local 의 ACIS_API_URL 만 채우면 자동으로 실제 호출로 전환됩니다.
 // ============================================================================
 
+import { unstable_cache } from 'next/cache';
+
 export type ACISSignal = 'BUY' | 'FX-WAIT' | 'HOLD' | 'AVOID' | 'UNKNOWN';
 
 export interface ACISSignalResponse {
@@ -395,7 +397,14 @@ function computeQuote(
   return { cifUsd, cifKrw, tariffKrw, totalKrw, perKg, perM2, marginPct };
 }
 
-export async function getQuoteComparison(): Promise<QuoteCompareResult> {
+// 10분 단위 재계산 — force-dynamic 페이지에서도 fetched_at 이 실제 데이터 갱신 시각을 반영.
+export const getQuoteComparison = unstable_cache(
+  _computeQuoteComparison,
+  ['acis-quote-comparison-v1'],
+  { revalidate: 600, tags: ['acis-quotes'] },
+);
+
+async function _computeQuoteComparison(): Promise<QuoteCompareResult> {
   const params = { ...QUOTE_DEFAULTS };
   let is_mock = true;
 
