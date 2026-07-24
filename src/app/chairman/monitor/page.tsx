@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { User, Bot } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { ACISCard } from '@/components/shared/ACISCard';
+import { ACISQuoteCompareCard } from '@/components/shared/ACISQuoteCompareCard';
 import { ChairmanCharts } from '@/components/chairman/ChairmanCharts';
 import { MarketsWidget } from '@/components/chairman/MarketsWidget';
 import { LogoutButton } from '@/components/shared/LogoutButton';
@@ -163,6 +164,11 @@ export default async function ChairmanMonitorPage() {
               : kpi.iqcPassRate >= 70 ? 'amber' : 'red'}
         />
         <ACISCard />
+      </div>
+
+      {/* ACIS ⑥번 섹션 실시간 스냅샷 — 공급자 견적 상호 비교 (도착원가) */}
+      <div className="mb-6">
+        <ACISQuoteCompareCard />
       </div>
 
       {/* 환율/원자재 시세 위젯 — ACIS 시계열 */}
