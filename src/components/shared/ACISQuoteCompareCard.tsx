@@ -97,7 +97,9 @@ export async function ACISQuoteCompareCard() {
           <div>관세 <span className="text-gray-300">{params.tariff}%</span></div>
           <div>부대비 <span className="text-gray-300 tabular-nums">{formatNumber(params.overhead)}원/톤</span></div>
           <div className="sm:text-right">
-            갱신 {new Date(fetched_at).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}
+            갱신 {new Date(fetched_at).toLocaleTimeString('ko-KR', {
+              hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Seoul',
+            })}
             <span className="text-gray-600 ml-1">· 10분 자동</span>
           </div>
         </div>

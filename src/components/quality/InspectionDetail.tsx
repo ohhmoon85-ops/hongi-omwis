@@ -442,7 +442,7 @@ function PrintCertificate({
       )}
 
       <p style={{ marginTop: '20px', fontSize: '11px', color: '#6b7385' }}>
-        본 성적서는 OMWIS 검수 시스템에서 자동 생성되었습니다. · {new Date().toLocaleString('ko-KR')}
+        본 성적서는 OMWIS 검수 시스템에서 자동 생성되었습니다. · {new Date().toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' })}
         <span style={{ float: 'right', fontFamily: 'Consolas,monospace' }}>
           검수 ID: {insp.id.slice(0, 8)}
         </span>
