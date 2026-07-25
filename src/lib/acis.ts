@@ -432,7 +432,77 @@ export const getQuoteComparison = unstable_cache(
   { revalidate: 600, tags: ['acis-quotes'] },
 );
 
+// ACIS /api/quote-compare 응답 스키마 (server 산식: smmAdjTotalKrw = 실시간 총액)
+interface AcisQuoteRow extends SupplierQuote {
+  cifUsd: number;
+  cifKrw: number;
+  tariffKrw: number;
+  totalKrw: number;       // 견적 확정치
+  perKg: number;
+  perM2: number;
+  marginPct: number;
+  smmAdjTotalKrw: number; // 실시간 총액 — OMWIS 카드가 표시할 값
+  smmAdjPerKg: number;
+  smmDeltaCny: number | null;
+  smmAtQuote: number | null;
+  smmCurrentCny: number | null;
+}
+interface AcisQuoteCompareResponse {
+  quotes: AcisQuoteRow[];
+  params: {
+    usdKrw: number; usdCny: number; cnyKrw: number;
+    freight: number; overhead: number; tariff: number;
+    domestic: number; kgm2: number;
+  };
+  smmCurrentCny: number;
+  smmSource: 'env' | 'fallback';
+  fetched_at: string;
+}
+
 async function _computeQuoteComparison(): Promise<QuoteCompareResult> {
+  // 1) 우선: ACIS /api/quote-compare (SSOT — 실시간 총액 = ACIS UI 완전 일치)
+  if (ACIS_API_URL) {
+    try {
+      const res = await fetch(`${ACIS_API_URL}/api/quote-compare`, { next: { revalidate: 600 } });
+      if (res.ok) {
+        const data = (await res.json()) as AcisQuoteCompareResponse;
+        if (Array.isArray(data.quotes) && data.quotes.length) {
+          // ACIS 의 실시간 총액(smmAdjTotalKrw) 을 OMWIS 카드의 totalKrw 로 매핑
+          const computed: ComputedQuote[] = data.quotes.map((q) => ({
+            id:          q.id,
+            supplier:    q.supplier,
+            product:     q.product,
+            inco:        q.inco,
+            currency:    q.currency,
+            pricePerTon: q.pricePerTon,
+            cut:         q.cut,
+            date:        q.date,
+            cifUsd:      q.cifUsd,
+            cifKrw:      q.cifKrw,
+            tariffKrw:   q.tariffKrw,
+            totalKrw:    q.smmAdjTotalKrw,   // ← 실시간 총액으로 대체
+            perKg:       q.smmAdjPerKg,      // ← SMM 반영 값
+            perM2:       q.perM2,
+            marginPct:   q.marginPct,
+            isWinner:    false,
+          }));
+          return finalizeQuotes(computed, {
+            usdKrw:   data.params.usdKrw,
+            usdCny:   data.params.usdCny,
+            freight:  data.params.freight,
+            overhead: data.params.overhead,
+            tariff:   data.params.tariff,
+            domestic: data.params.domestic,
+            kgm2:     data.params.kgm2,
+          }, false);
+        }
+      }
+    } catch (err) {
+      console.error('[ACIS] /api/quote-compare fetch failed, falling back to local compute:', err);
+    }
+  }
+
+  // 2) 폴백: /api/rates 만 받아 로컬 산식 (ACIS 엔드포인트 장애 시 견적 확정치 표시)
   const params = { ...QUOTE_DEFAULTS };
   let is_mock = true;
 
@@ -461,6 +531,14 @@ async function _computeQuoteComparison(): Promise<QuoteCompareResult> {
     ...computeQuote(q, params),
     isWinner: false,
   }));
+  return finalizeQuotes(computed, params, is_mock);
+}
+
+function finalizeQuotes(
+  computed: ComputedQuote[],
+  params: typeof QUOTE_DEFAULTS,
+  is_mock: boolean,
+): QuoteCompareResult {
 
   // 같은 product 카테고리 내 최저 총원가 원/톤에 winner 배지 (2건 이상일 때만)
   const productCount = new Map<QuoteProduct, number>();

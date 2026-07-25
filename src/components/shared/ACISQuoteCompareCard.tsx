@@ -37,7 +37,7 @@ export async function ACISQuoteCompareCard() {
     <Card className="bg-gradient-to-b from-[#181c28] to-[#13161f] border-white/[0.06] text-white">
       <CardHeader className="pb-2">
         <CardTitle className="text-sm text-gray-300 flex items-center justify-between flex-wrap gap-2">
-          <span>📊 공급자 견적 도착 최저가 <span className="text-gray-500 text-xs">(실시간)</span></span>
+          <span>📊 공급자 견적 도착 최저가 <span className="text-gray-500 text-xs">(ACIS 실시간 총액 연동)</span></span>
           <span className="flex items-center gap-2">
             {is_mock && (
               <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-400 border border-amber-500/30">
