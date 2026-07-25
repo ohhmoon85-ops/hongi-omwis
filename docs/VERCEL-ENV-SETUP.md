@@ -50,15 +50,23 @@ Vercel 대시보드 → `hongi-omwis` 프로젝트 → **Settings** → **Enviro
 
 ### 세금계산서 (팝빌 + 공급자 정보)
 
+⚠️ 아래 SUPPLIER_* 는 미설정 시 코드 기본값(사업자등록증 실값)이 사용됩니다.
+값이 바뀌었을 때(예: 대표 교체·주소 이전)만 Vercel 에서 오버라이드하세요.
+**대표자 = 김관수(법인 대표)**. 시스템 super_admin(변지수) 과 별개 개념.
+
 | Key | Value | 비고 |
 |---|---|---|
-| `SUPPLIER_BIZ_NUMBER` | `123-45-67890` | (주)홍지 사업자등록번호 |
+| `SUPPLIER_BIZ_NUMBER` | `201-81-79147` | (주)홍지 사업자등록번호 |
+| `SUPPLIER_CORP_NUMBER` | `110111-2683608` | 법인등록번호 |
 | `SUPPLIER_NAME` | `(주)홍지` | |
-| `SUPPLIER_CEO` | `변지수` | |
-| `SUPPLIER_ADDRESS` | (사업장 주소) | |
+| `SUPPLIER_CEO` | `김관수` | 법인 대표 |
+| `SUPPLIER_ADDRESS` | `경기도 파주시 오도로 58, 외1필지(오도로 56)(오도동)` | 사업장/본점 동일 |
 | `SUPPLIER_BIZ_TYPE` | `제조` | |
-| `SUPPLIER_BIZ_ITEM` | `알루미늄` | |
-| `SUPPLIER_EMAIL` | `tax@hongjee.co.kr` | |
+| `SUPPLIER_BIZ_ITEM` | `기타금속판재가공업` | 알루미늄 사업 기준 · 산업코드 25923 |
+| `SUPPLIER_EMAIL` | `hongjeeart@nate.com` | 등록증상 이메일 |
+| `SUPPLIER_TEL` | `031-957-5038` | |
+| `SUPPLIER_FAX` | `031-957-5071` | |
+| `SUPPLIER_FOUNDED_AT` | `2003-01-01` | 개업연월일 |
 | `POPBILL_LINK_ID` | 팝빌 발급 | https://www.popbill.com — 미설정 시 데모 발행 |
 | `POPBILL_SECRET` | 팝빌 발급 | 동일 |
 
