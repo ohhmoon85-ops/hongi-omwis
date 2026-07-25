@@ -81,9 +81,6 @@ export async function ACISQuoteCompareCard() {
                       <span className="text-gray-500 ml-1">({t.count}건 중 최저)</span>
                     )}
                   </div>
-                  <div className={`text-[11px] mt-0.5 ${t.best.marginPct >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                    국내가 대비 {t.best.marginPct >= 0 ? '+' : ''}{t.best.marginPct.toFixed(1)}%
-                  </div>
                 </>
               ) : (
                 <div className="mt-3 text-sm text-gray-500">견적 미확보</div>
