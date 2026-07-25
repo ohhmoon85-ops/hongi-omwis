@@ -81,9 +81,6 @@ export async function ACISQuoteCompareCard() {
                       <span className="text-gray-500 ml-1">({t.count}건 중 최저)</span>
                     )}
                   </div>
-                  <div className={`text-[11px] mt-0.5 ${t.best.marginPct >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                    국내가 대비 {t.best.marginPct >= 0 ? '+' : ''}{t.best.marginPct.toFixed(1)}%
-                  </div>
                 </>
               ) : (
                 <div className="mt-3 text-sm text-gray-500">견적 미확보</div>
@@ -97,7 +94,9 @@ export async function ACISQuoteCompareCard() {
           <div>관세 <span className="text-gray-300">{params.tariff}%</span></div>
           <div>부대비 <span className="text-gray-300 tabular-nums">{formatNumber(params.overhead)}원/톤</span></div>
           <div className="sm:text-right">
-            갱신 {new Date(fetched_at).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}
+            갱신 {new Date(fetched_at).toLocaleTimeString('ko-KR', {
+              hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Seoul',
+            })}
             <span className="text-gray-600 ml-1">· 10분 자동</span>
           </div>
         </div>

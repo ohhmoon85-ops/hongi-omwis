@@ -19,11 +19,13 @@ export function formatNumber(n: number | null | undefined, digits = 0): string {
   }).format(n);
 }
 
+// 항상 KST(Asia/Seoul) 기준으로 포맷 — 서버 컴포넌트에서 호출돼도 UTC 로 새지 않도록.
 export function formatDate(iso: string | Date | null | undefined): string {
   if (!iso) return '-';
   const d = typeof iso === 'string' ? new Date(iso) : iso;
   return new Intl.DateTimeFormat('ko-KR', {
     year: 'numeric', month: '2-digit', day: '2-digit',
+    timeZone: 'Asia/Seoul',
   }).format(d);
 }
 
@@ -33,6 +35,7 @@ export function formatDateTime(iso: string | Date | null | undefined): string {
   return new Intl.DateTimeFormat('ko-KR', {
     year: 'numeric', month: '2-digit', day: '2-digit',
     hour: '2-digit', minute: '2-digit',
+    timeZone: 'Asia/Seoul',
   }).format(d);
 }
 
