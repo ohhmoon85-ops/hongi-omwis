@@ -7,7 +7,7 @@ import { createClient } from '@/lib/supabase/client';
 import { ROLE_LABEL, type UserRole } from '@/types';
 import {
   LayoutDashboard, ClipboardList, Building2, Package, Tag, Bot, Bell,
-  User, Users, LogOut, Menu, X, ClipboardCheck,
+  User, Users, LogOut, Menu, X, ClipboardCheck, Scissors,
 } from 'lucide-react';
 import { ThemeToggle } from '@/components/shared/ThemeToggle';
 
@@ -29,6 +29,7 @@ const NAV: NavItem[] = [
   { href: '/admin/notifications',label: '알림 이력', icon: Bell,           roles: ['super_admin', 'admin'] },
   { href: '/admin/users',        label: '사용자',   icon: Users,          roles: ['super_admin'] },
   { href: '/admin/acis',         label: 'ACIS',     icon: Bot,            roles: ['super_admin', 'admin'], external: true },
+  { href: '/admin/cutting',      label: '컷팅 시뮬', icon: Scissors,       roles: ['super_admin', 'admin'], external: true },
 ];
 
 export function AdminNav({ role }: { role: UserRole | null }) {

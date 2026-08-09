@@ -25,6 +25,7 @@ Vercel 대시보드 → `hongi-omwis` 프로젝트 → **Settings** → **Enviro
 | `NEXT_PUBLIC_APP_URL` | `https://hongi-omwis.vercel.app` (실제 도메인) | 알림톡 버튼 링크에 사용됨 |
 | `CRON_SECRET` | 긴 랜덤 문자열 (예: `openssl rand -hex 32`) | Vercel cron 보호용 |
 | `ACIS_API_URL` | `https://aluminum-coil-import-intelligence-s.vercel.app` | ACIS 신호·시세 위젯 |
+| `CUTTING_APP_URL` | `https://hongjee-cutting.vercel.app` | 컷팅 로스 시뮬레이터 외부 앱 (super_admin·admin 네비 항목) |
 
 ---
 
